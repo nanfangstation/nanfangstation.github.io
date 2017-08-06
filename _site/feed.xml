@@ -5,9 +5,246 @@
     <description>今天的你一定会感谢昨天拼命努力的你</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 28 Jul 2017 01:27:52 +0800</pubDate>
-    <lastBuildDate>Fri, 28 Jul 2017 01:27:52 +0800</lastBuildDate>
+    <pubDate>Sun, 06 Aug 2017 18:08:00 +0800</pubDate>
+    <lastBuildDate>Sun, 06 Aug 2017 18:08:00 +0800</lastBuildDate>
     <generator>Jekyll v3.5.1</generator>
+    
+      <item>
+        <title>Bootstrap-Table</title>
+        <description>&lt;h4 id=&quot;简介&quot;&gt;简介&lt;/h4&gt;
+&lt;p&gt;基于 Bootstrap 的 jQuery 表格插件，通过简单的设置，就可以拥有强大的单选、多选、排序、分页，以及编辑、导出、过滤（扩展）等等的功能。&lt;/p&gt;
+
+&lt;p&gt;官网地址：&lt;a href=&quot;http://bootstrap-table.wenzhixin.net.cn/zh-cn/&quot;&gt;http://bootstrap-table.wenzhixin.net.cn/zh-cn/&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Github地址：&lt;a href=&quot;https://github.com/wenzhixin/bootstrap-table&quot;&gt;https://github.com/wenzhixin/bootstrap-table&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;导出插件：&lt;a href=&quot;https://github.com/hhurz/tableExport.jquery.plugin&quot;&gt;tableExport.jquery.plugin&lt;/a&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;下载&quot;&gt;下载&lt;/h4&gt;
+&lt;p&gt;Bootstrap table (当前版本 v1.11.1) 可以有几种快速入门的方法。&lt;/p&gt;
+
+&lt;h6 id=&quot;1-源码&quot;&gt;1. 源码&lt;/h6&gt;
+&lt;p&gt;包含了 css，JavaScript，多语言和扩展，以及文档。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://bootstrap-table.wenzhixin.net.cn/zh-cn/getting-started/
+bootstrap-table&quot;&gt;下载源码&lt;/a&gt;&lt;/p&gt;
+
+&lt;h6 id=&quot;2-克隆或者-fork-通过-github&quot;&gt;2. 克隆或者 Fork 通过 GitHub&lt;/h6&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/wenzhixin/bootstrap-table&quot;&gt;通过github&lt;/a&gt;&lt;/p&gt;
+
+&lt;h6 id=&quot;3-cdn&quot;&gt;3. CDN&lt;/h6&gt;
+&lt;p&gt;CDNJS 或者 bootcss 提供了 CDN 来支持 Bootstrap table 的 CSS 和 JavaScript 文件链接。&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&amp;lt;!-- Latest compiled and minified CSS --&amp;gt;
+&amp;lt;link rel=&quot;stylesheet&quot; href=&quot;//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.11.1/bootstrap-table.min.css&quot;&amp;gt;
+
+&amp;lt;!-- Latest compiled and minified JavaScript --&amp;gt;
+&amp;lt;script src=&quot;//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.11.1/bootstrap-table.min.js&quot;&amp;gt;&amp;lt;/script&amp;gt;
+
+&amp;lt;!-- Latest compiled and minified Locales --&amp;gt;
+&amp;lt;script src=&quot;//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.11.1/locale/bootstrap-table-zh-CN.min.js&quot;&amp;gt;&amp;lt;/script&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;h4 id=&quot;使用&quot;&gt;使用&lt;/h4&gt;
+&lt;h6 id=&quot;1-引入样式&quot;&gt;1. 引入样式&lt;/h6&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&amp;lt;link href=&quot;https://cdn.bootcss.com/bootstrap-table/1.11.1/bootstrap-table.min.css&quot; rel=&quot;stylesheet&quot;&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;h6 id=&quot;2-引入js&quot;&gt;2. 引入js&lt;/h6&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&amp;lt;script src=&quot;https://cdn.bootcss.com/bootstrap-table/1.11.1/bootstrap-table.min.js&quot;&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src=&quot;https://cdn.bootcss.com/bootstrap-table/1.11.1/locale/bootstrap-table-zh-CN.min.js&quot;&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src=&quot;https://cdn.bootcss.com/bootstrap-table/1.11.1/extensions/export/bootstrap-table-export.min.js&quot;&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src=&quot;http://rawgit.com/hhurz/tableExport.jquery.plugin/master/tableExport.js&quot;&amp;gt;&amp;lt;/script&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;通过 data 属性或者 JavaScript 来启用 Bootstrap Table 插件，显示丰富的功能。&lt;/p&gt;
+
+&lt;h6 id=&quot;3-通过-data-属性的方式&quot;&gt;3. 通过 data 属性的方式&lt;/h6&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&amp;lt;div id=&quot;toolbar&quot; class=&quot;btn-group&quot;&amp;gt;
+    // 图表切换选项
+    &amp;lt;select id=&quot;table_switch&quot; class=&quot;form-control&quot; name=&quot;table_switch&quot;
+            required=&quot;required&quot; style=&quot;width: 80px;&quot;&amp;gt;
+        &amp;lt;option value=&quot;表格&quot; selected&amp;gt;表格&amp;lt;/option&amp;gt;
+        &amp;lt;option value=&quot;柱状图&quot;&amp;gt;柱状图&amp;lt;/option&amp;gt;
+    &amp;lt;/select&amp;gt;
+    // 下载配置选项
+    &amp;lt;select class=&quot;form-control&quot;&amp;gt;
+        &amp;lt;option value=&quot;&quot;&amp;gt;下载本页&amp;lt;/option&amp;gt;
+        &amp;lt;option value=&quot;all&quot;&amp;gt;下载所有&amp;lt;/option&amp;gt;
+        &amp;lt;option value=&quot;selected&quot;&amp;gt;下载所选&amp;lt;/option&amp;gt;
+    &amp;lt;/select&amp;gt;
+&amp;lt;/div&amp;gt;
+&amp;lt;table id=&quot;table&quot;
+       data-search=&quot;true&quot; //是否允许搜索
+       data-toolbar=&quot;#toolbar&quot;
+       data-show-refresh=&quot;true&quot; //是否刷新
+       data-show-columns=&quot;true&quot;
+       data-pagination=&quot;true&quot; //是否分页
+       data-height=&quot;250&quot; 
+       data-show-export=&quot;true&quot;  //是否显示导出
+       data-striped=&quot;true&quot;
+       data-show-pagination-switch=&quot;true&quot;
+       data-strictSearch=&quot;true&quot;
+       data-showToggle=&quot;true&quot;
+       data-sort-order=&quot;desc&quot;
+       data-sort-stable=&quot;true&quot;
+       data-click-to-select=&quot;true&quot;
+       data-toolbar=&quot;#toolbar&quot;
+       data-toggle=&quot;table&quot;
+       data-checkbox=&quot;true&quot;
+       data-show-toggle=&quot;true&quot;
+       data-page-list=&quot;[10, 25, 50, 100, ALL]&quot;&amp;gt;
+    &amp;lt;thead&amp;gt;
+    &amp;lt;tr&amp;gt;
+        &amp;lt;th data-field=&quot;state&quot; data-checkbox=&quot;true&quot;&amp;gt;&amp;lt;/th&amp;gt;
+        &amp;lt;th data-field=&quot;system&quot;&amp;gt;监控系统&amp;lt;/th&amp;gt;
+        &amp;lt;th data-field=&quot;servicePath&quot;&amp;gt;访问路径&amp;lt;/th&amp;gt;
+        &amp;lt;th data-field=&quot;serviceName&quot;&amp;gt;访问路径名称&amp;lt;/th&amp;gt;
+        &amp;lt;th data-field=&quot;invoker&quot;&amp;gt;调用方&amp;lt;/th&amp;gt;
+        &amp;lt;th data-field=&quot;invokerName&quot;&amp;gt;调用方名称&amp;lt;/th&amp;gt;
+        &amp;lt;th data-field=&quot;count&quot; data-sortable=&quot;true&quot;&amp;gt;调用次数&amp;lt;/th&amp;gt;
+        &amp;lt;th data-field=&quot;percent&quot; data-sortable=&quot;true&quot;&amp;gt;占比(%)&amp;lt;/th&amp;gt;
+    &amp;lt;/tr&amp;gt;
+    &amp;lt;/thead&amp;gt;
+&amp;lt;/table&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;h6 id=&quot;4-通过-javascript-的方式&quot;&gt;4. 通过 JavaScript 的方式&lt;/h6&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;// 初始化
+$('#table').bootstrapTable({
+  data: tableData,
+  height: '600px',
+  exportOptions: {  // 导出参数配置
+    fileName: fileName,  // 导出文件名称配置
+    ignoreColumn: [0]  // 导出忽略第一列
+  }
+});
+// 下载初始化
+$(function () {
+  var $table = $('#table');
+  $(function () {
+    $('#toolbar').find('select').change(function () {
+      $table.bootstrapTable('refreshOptions', {
+        exportDataType: $(this).val()
+      });
+    });
+  })
+});
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;h4 id=&quot;效果&quot;&gt;效果&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://raw.githubusercontent.com/nanfangstation/image/master/blog/2017-08/bootstrap-table-demo.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;优点&quot;&gt;优点&lt;/h4&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;界面采用扁平化的风格，用户体验比较好，更好兼容各种客户端&lt;/li&gt;
+  &lt;li&gt;配置简单，文档齐全&lt;/li&gt;
+  &lt;li&gt;开源、免费&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+        <pubDate>Sun, 06 Aug 2017 00:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2017/08/06/bootstrap-table/</link>
+        <guid isPermaLink="true">http://localhost:4000/2017/08/06/bootstrap-table/</guid>
+        
+        <category>Bootstrap</category>
+        
+        <category>前端</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Joda-Time</title>
+        <description>&lt;h2 id=&quot;目录&quot;&gt;目录&lt;/h2&gt;
+&lt;ol&gt;
+  &lt;li&gt;&lt;a href=&quot;#引入依赖&quot;&gt;引入依赖&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#html代码&quot;&gt;html代码&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#js初始化&quot;&gt;js初始化&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#页面效果&quot;&gt;页面效果&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#优点&quot;&gt;优点&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h4 id=&quot;简介&quot;&gt;简介&lt;/h4&gt;
+&lt;p&gt;Joda-Time是Java SE 8之前的Java实际标准日期和时间库。现在，用户被要求迁移到java.time（JSR-310）。
+Java SE 8之前的标准的日期和时间处理类表现非常不好。为了处理这个问题,Joda-Time成为Java SE 8的标准类库。从Java SE 8之前,用户开始要求将Joda-Time迁移到java.time(JSR-310) - 一个JDK的核心部分。Joda-Time的设计允许多个日历系统,并且继续提供一个简单的API。 默认的日历是标准ISO8601。Gregorian,Julian, Buddhist, Coptic, Ethiopic 以及 Islamic日历系统也同样包括在Joda-Time中,同时支持时间时区,久期,格式化,日期解析。&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;使用简单&lt;/li&gt;
+  &lt;li&gt;扩展容易&lt;/li&gt;
+  &lt;li&gt;简单特性集合&lt;/li&gt;
+  &lt;li&gt;更新到时区计算&lt;/li&gt;
+  &lt;li&gt;日历支持&lt;/li&gt;
+  &lt;li&gt;与JDK互操作&lt;/li&gt;
+  &lt;li&gt;更好的展示字符集&lt;/li&gt;
+  &lt;li&gt;更好的测试覆盖&lt;/li&gt;
+  &lt;li&gt;文档完整&lt;/li&gt;
+  &lt;li&gt;成熟&lt;/li&gt;
+  &lt;li&gt;开源&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;####概念
+&lt;strong&gt;Instant&lt;/strong&gt;
+&lt;strong&gt;Partial(局部日期)&lt;/strong&gt;
+&lt;strong&gt;Chronology(年表)&lt;/strong&gt;
+&lt;strong&gt;Duration&lt;/strong&gt;
+这个类表示一个绝对的精确跨度，以毫秒为单位。这个类提供的要领可以用于通过规则的数学转换（比如1分钟 = 60秒，1天 = 24小时），将时间跨度转换为规则单位（比如秒、分和小时）
+应用情景：希望转换一个时间跨度，但是您并不关心这个时间跨度在何时发生，或者运用毫秒处理时间跨度比较方便
+&lt;strong&gt;Period&lt;/strong&gt;
+这个类表示与 Duration 相同的概念，但是以人们比较熟悉的单位表示，比如年、月、周
+应用情景：您并不关心这段时期必须在何时发生，或者您更关心检索单个字段的能力，这些字段描述由 Period 封装的时间跨度
+&lt;strong&gt;Interval&lt;/strong&gt;
+这个类表示一个特定的时间跨度，将运用一个明确的时刻界定这段时间跨度的范围。Interval 为半开区间，这表示由 Interval 封装的时间跨度包括这段时间的起始时刻，但是不包含结束时刻。
+应用情景：需要表示在时间连续区间中以特定的点开始和结束的一段时间跨度。&lt;/p&gt;
+&lt;h4 id=&quot;特性&quot;&gt;特性&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;LocalDate 无时间的日期&lt;/li&gt;
+  &lt;li&gt;LocalTime 无日期的时间&lt;/li&gt;
+  &lt;li&gt;Instant 瞬间的时间点&lt;/li&gt;
+  &lt;li&gt;DateTime 带时区的功能区全的日期和时间类&lt;/li&gt;
+  &lt;li&gt;DateTimeZone 一个更好的时区&lt;/li&gt;
+  &lt;li&gt;Duration and Period 大量的时间&lt;/li&gt;
+  &lt;li&gt;Interval 两个时间点的间隔&lt;/li&gt;
+  &lt;li&gt;一个方便和复杂的格式化解析&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;####常用功能&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;直接跟当前时间比较 isAfterNow/isBeforeNow/isEqualNow&lt;/li&gt;
+  &lt;li&gt;返回Date/Calendar toDate/toCalendar&lt;/li&gt;
+  &lt;li&gt;时间计算，加年/月/日/时分秒 plusYears/plusMonths/plusDays&lt;/li&gt;
+  &lt;li&gt;时区设置 withZone&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;常用函数&lt;/p&gt;
+
+&lt;p&gt;依赖&lt;/p&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;joda-time&lt;/groupId&gt;
+  &lt;artifactId&gt;joda-time&lt;/artifactId&gt;
+  &lt;version&gt;2.9.9&lt;/version&gt;
+&lt;/dependency&gt;
+
+&lt;p&gt;官网地址：&lt;a href=&quot;http://www.joda.org/joda-time/&quot;&gt;http://www.joda.org/joda-time/&lt;/a&gt;&lt;/p&gt;
+</description>
+        <pubDate>Fri, 28 Jul 2017 00:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2017/07/28/joda-time/</link>
+        <guid isPermaLink="true">http://localhost:4000/2017/07/28/joda-time/</guid>
+        
+        <category>Java</category>
+        
+        <category>Tool</category>
+        
+        
+      </item>
     
       <item>
         <title>Bootstrap-Select用法</title>
