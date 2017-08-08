@@ -1,0 +1,589 @@
+---
+layout:     post
+title:      "mongoDB的集群模式及其搭建"
+subtitle:   "MongoDB是时下流行的NoSql数据库，它的存储方式是文档式存储，并不是Key-Value形式。"
+date:       2017-08-09
+author:     "南方"
+header-img: "img/post-bg-mongoDB.jpeg"
+catalog: true
+tags:
+    - mongoDB
+    - Tool
+---
+  
+## mongDB简介
+MongoDB是一个提供高性能，高可用性和自动缩放的开源文档数据库。
+### 1. 文档数据库
+MongoDB中的一个记录是一个文档，它是一个由字段和值对组成的数据结构。 MongoDB文档类似于JSON对象。字段的值可能包括其他文档，数组和文档数组。
+
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongdb-data-structure.svg)
+
+使用文档的好处：
+* 文档（即对象）对应于许多编程语言中的本机数据类型。
+* 嵌入式文档和数组减少了对昂贵连接的需求。
+* 动态模式支持流畅的多态。
+
+### 2. 主要特点
+* 高性能
+    MongoDB提供高性能的数据持久性。尤其是：
+    1）支持嵌入式数据模型可减少数据库系统上的I / O活动。
+    2）索引支持更快的查询，并且可以包括来自嵌入式文档和数组的密钥。
+* 丰富的查询语言
+MongoDB支持丰富的查询语言来支持读写操作（CRUD）以及：
+1）数据汇总
+2）文本搜索和地理空间查询。
+* 高可用性
+MongoDB的复制工具，称为副本集，提供：
+1）自动故障转移和
+2）数据冗余
+3）复制集是一组MongoDB服务器，它们保持相同的数据集，提供冗余和增加数据可用性。
+* 水平可扩展性
+MongoDB提供了可扩展性，作为其核心功能的一部分：
+1）分片通过一组机器分发数据。
+2）MongoDB 3.4支持基于分片键创建数据区域。在平衡的集群中，MongoDB将区域覆盖的读写操作只引导到区域内的分片。
+* 支持多存储引擎
+MongoDB支持多种存储引擎，如：
+1）WiredTiger存储引擎
+2）MMAPv1存储引擎
+此外，MongoDB还提供可插拔存储引擎API，允许第三方为MongoDB开发存储引擎。
+
+## mongDB概念
+### 1. 数据库和集合
+
+MongoDB在收藏中存储BSON文档，即数据记录;数据库中的集合。
+
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongdb-collection.svg)
+
+#### 数据库
+在MongoDB中，数据库包含文档集合。
+要选择要使用的数据库，在mongo shell命令为：use myDB
+1）创建数据库
+use myNewDB
+db.myNewCollection1.insertOne( { x: 1 } )
+
+如果insertOne（）操作不存在，则会创建数据库myNewDB和集合myNewCollection1。
+
+有关数据库名称的限制列表，详见[Naming Restrictions.](https://docs.mongodb.com/manual/reference/limits/#restrictions-on-db-names)
+
+#### 集合
+MongoDB将文档存储在集合中。集合类似于关系数据库中的表。
+如果一个集合不存在，MongoDB将在首次存储该集合的数据时创建该集合。
+命令如下：
+db.myNewCollection2.insertOne( { x: 1 } )
+db.myNewCollection3.createIndex( { y: 1 } )
+如果insertOne（）和createIndex（）操作不存在，则创建它们各自的集合。
+ 
+#### 视图
+（
+从3.4版开始，MongoDB增加了从现有集合或其他视图创建只读视图的支持。）
+1）创建视图
+2）行为
+3）删除视图
+4）修改视图
+5）支持操作
+
+#### 加盖收藏
+
+### 2. 文档
+MongoDB将数据记录存储为BSON文档。 BSON是JSON文档的二进制表示形式，尽管它包含比JSON更多的数据类型。
+
+#### 文档类型
+```
+{
+   field1: value1,
+   field2: value2,
+   field3: value3,
+   ...
+   fieldN: valueN
+}
+```
+```
+var mydoc = {
+   _id: ObjectId("5099803df3f4948bd2f98391"),
+   name: { first: "Alan", last: "Turing" },
+   birth: new Date('Jun 23, 1912'),
+   death: new Date('Jun 07, 1954'),
+   contribs: [ "Turing machine", "Turing test", "Turingery" ],
+   views : NumberLong(1250000)
+}
+```
+以上的字段具有以下数据类型：
+
+* _id包含一个ObjectId。
+* name包含包含首个和最后一个字段的嵌入式文档。
+* 出生和死亡持有“日期”类型的值。
+* contribs包含一串字符串。
+* 视图持有NumberLong类型的值。
+
+1）字段名称
+都是字符类型，文档对字段名称有限制
+2）字段值限制
+对于索引集合，索引字段的值具有最大索引键长度限制。
+
+#### 点符号
+
+MongoDB使用点符号来访问数组的元素并访问嵌入文档的字段。
+
+1）数组
+要通过基于零的索引位置指定或访问数组的元素，请将数组名称与点（。）和基于零的索引位置相连，并用引号括起来："<array>.<index>"
+
+2）嵌入式文档
+
+要使用点表示法指定或访问嵌入式文档的字段，请将嵌入的文档名称与点（。）和字段名称并入，并用引号括起来："<embedded document>.<field>"
+
+#### 文档限制
+
+1）文档大小限制
+最大BSON文档大小为16兆字节。
+
+最大文档大小有助于确保单个文档不能使用过多的RAM，或在传输过程中，带宽过大。为了存储大于最大大小的文档，MongoDB提供了GridFS API。
+
+2）文档字段顺序
+MongoDB在写入操作后保留文档字段的顺序，但以下情况除外：
+
+_id字段始终是文档中的第一个字段。
+包括重命名字段名称的更新可能导致文档中字段的重新排序。
+版本2.6更改：从版本2.6开始，MongoDB积极地尝试保留文档中的字段顺序。 2.6版之前，MongoDB没有主动保留文档中字段的顺序。
+
+3）_id字段
+在MongoDB中，存储在集合中的每个文档都需要一个用作主键的唯一的_id字段。如果插入的文档省略_id字段，MongoDB驱动程序将自动为_id字段生成一个ObjectId。
+
+_id字段具有以下行为和约束：
+
+
+默认情况下，MongoDB在创建集合时在_id字段上创建唯一的索引。
+_id字段始终是文档中的第一个字段。如果服务器首先接收到没有_id字段的文档，那么服务器将把该字段移动到开头。
+_id字段可能包含除阵列之外的任何BSON数据类型的值。
+
+#### 文档结构其他用法
+除了定义数据记录外，MongoDB还使用了整个文档结构，包括但不限于：查询过滤器，更新规范文档和索引规范文档。
+
+### 3. BSON类型
+
+BSON是用于在MongoDB中存储文档和进行远程过程调用的二进制序列化格式。 BSON规范位于bsonspec.org。
+
+BSON支持以下数据类型作为文档中的值。每个数据类型都有相应的数字和字符串别名，可以与$ type运算符一起使用BSON类型查询文档。
+
+
+|Type|    Number|  Alias |  Notes|
+|--|--|--|--|
+|Double|  1 |  “double” |    
+|String|  2 |  “string”|     
+|Object  |3|   “object”   |  
+|Array |  4  | “array” | 
+|Binary data| 5 |  “binData” |   
+|Undefined   |6 |  “undefined”| Deprecated.|
+|ObjectId |   7  | “objectId”   |
+|Boolean| 8 |  “bool”   |
+|Date  |  9   |“date”   |
+|Null|    10 | “null”  | 
+|Regular Expression | 11  |“regex”  |
+|DBPointer   |12 | “dbPointer” |Deprecated.|
+|JavaScript | 13  |“javascript”    | 
+|Symbol| 14  |“symbol”   | Deprecated.|
+|JavaScript (with scope)| 15 | “javascriptWithScope”   | 
+|32-bit integer  |16 | “int”  |  
+|Timestamp  | 17|  “timestamp” | 
+|64-bit integer|  18 | “long”  | 
+|Decimal128 | 19 | “decimal”  | New in version 3.4.|
+|Min key |-1 | “minKey”   |  
+|Max key |127 |“maxKey”  |   
+
+
+以下部分介绍特定BSON类型的特殊注意事项。
+#### ObjectId
+ObjectIds很小，可能是唯一的，快速生成和订购。 ObjectId值由12个字节组成，其中前四个字节是反映ObjectId创建的时间戳，具体为：
+
+* 表示自Unix纪元以来的秒数的4字节值，
+* 一个3字节的机器标识符，
+* 一个2字节的进程ID，和
+* 一个3字节的计数器，以随机值开头。
+
+
+在MongoDB中，存储在集合中的每个文档都需要一个用作主键的唯一的_id字段。如果插入的文档省略_id字段，MongoDB驱动程序将自动为_id字段生成一个ObjectId。
+
+MongoDB客户端应添加具有唯一ObjectId的_id字段。为_id字段使用ObjectIds提供了以下附加优点：
+
+在mongo shell中，您可以使用ObjectId.getTimestamp（）方法访问ObjectId的创建时间。
+存储ObjectId值的_id字段上的排序大致相当于按创建时间排序。
+
+**
+ObjectId值与生成时间的顺序之间的关系在一秒钟内就不严格。如果单个系统上的多个系统或多个进程或线程会在一秒钟内生成值; ObjectId值不表示严格的插入顺序。客户端之间的时钟偏移也可能导致非严格的排序，即使是值，因为客户端驱动程序生成ObjectId值。**
+
+#### String
+
+BSON字符串是UTF-8。一般来说，每个编程语言的驱动程序在将序列化和反序列化BSON时都从语言的字符串格式转换为UTF-8。这使得可以轻松地将大多数国际字符存储在BSON字符串中。 [1]此外，MongoDB $ regex查询支持正则表达式字符串中的UTF-8。
+
+#### Timestamps
+
+BSON具有内部MongoDB使用的特殊时间戳类型，并且不与常规Date类型相关联。时间戳值是64位值，其中：
+
+前32位是一个time_t值（从Unix纪元开始的秒数）
+第二个32位是在给定秒内的操作的递增序数。
+在单个mongod实例中，时间戳值始终是唯一的。
+
+在复制中，oplog具有ts字段。此字段中的值反映了使用BSON时间戳值的操作时间。
+
+如果在顶级字段中插入包含空BSON时间戳的文档，则MongoDB服务器将使用当前时间戳值替换该空时间戳。例如，如果您创建一个插入时间戳值的文档，如下面的操作：
+var a = new Timestamp();
+
+db.test.insertOne( { ts: a } );
+
+然后，db.test.find（）操作将返回类似于以下内容的文档：
+{ "_id" : ObjectId("542c2b97bac0595474108b48"), "ts" : Timestamp(1412180887, 1) }
+
+如果ts是嵌入式文档中的字段，则服务器将其留作空时间戳值。
+
+在版本2.6中更改：以前，服务器将仅替换插入文档的前两个字段（包括_id）中的空时间戳值。现在MongoDB将取代任何顶级字段。
+
+#### Date
+BSON Date是一个64位整数，表示自Unix纪元以来的毫秒数（1970年1月1日）。这导致了过去和未来的可观日期范围约2.9亿年。
+
+官方BSON规范将BSON日期类型称为UTC datetime。
+
+BSON日期类型已签名。 [2]负值代表1970年以前的日期。
+使用mongo shell中的新Date（）构造函数构造一个Date：
+var mydate1 = new Date()
+
+### 4. 比较/排序顺序
+### 5. MongoDB扩展JSON
+
+
+## mongoDB安装与启动
+brew install mongodb
+下图说明已经安装成功,安装的目录就是 /usr/local/Cellar/mongodb/3.4.6
+
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/install-mongdb.png)
+
+mongod命令尝试启动报错
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/data-db-not-found.png)
+解决方案：指定MongoDb数据存储文件夹
+默认mongodb 数据文件是放到根目录 data/db 文件夹下，启动时没有这个文件，需自行创建
+创建命令为：$ sudo mkdir -p /data/db
+
+继续尝试启动还是报错
+
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/data-db-read-only.png)
+原因是创建的data db目录并不在home目录下面所以需要确保文件夹权限
+查看当前用户：users/id -ua/who/whoami 这四个命令都可
+给刚刚创建的文件夹赋予当前用户的权限：sudo chown -R `$USER` /data/db
+
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongod-success.png)
+
+## MongoDB CRUD操作
+CRUD操作创建，读取，更新和删除文档。
+
+### 1. 写
+创建或插入操作将新的文档添加到集合。如果集合当前不存在，则插入操作将创建集合。
+
+![](https://docs.mongodb.com/manual/_images/crud-annotated-mongodb-insertOne.bakedsvg.svg)
+
+### 2. 读
+
+读取操作从集合中检索文档;即查询文档的集合。 MongoDB提供了从集合中读取文档的以下方法：
+![](https://docs.mongodb.com/manual/_images/crud-annotated-mongodb-find.bakedsvg.svg)
+
+### 3. 更新
+![](https://docs.mongodb.com/manual/_images/crud-annotated-mongodb-updateMany.bakedsvg.svg)
+
+### 4. 删除
+![](https://docs.mongodb.com/manual/_images/crud-annotated-mongodb-deleteMany.bakedsvg.svg)
+
+### 5. 批量写
+
+## 复制
+MongoDB中的一个副本集是保持相同数据集的一组mongod进程。复制集提供冗余和高可用性，并且是所有生产部署的基础。本节介绍了MongoDB中的复制以及副本集的组件和体系结构。该部分还提供了有关复制集的常见任务的教程。
+
+### 1. 冗余和数据可用性
+
+复制提供冗余并增加数据可用性。在不同数据库服务器上具有多个数据副本时，复制可以提供一个级别的单一数据库服务器丢失的容错能力。
+
+在某些情况下，复制可以提供增加的读取容量，因为客户端可以向不同的服务器发送读取操作维护不同数据中心的数据副本可以增加分布式应用程序的数据位置和可用性。您还可以为专用目的维护其他副本，例如灾难恢复，报告或备份。
+
+### 2. MongoDB中的复制
+
+副本集是保持相同数据集的一组mongod实例。副本集包含几个数据承载节点和可选的一个仲裁节点。在承载节点中，只有一个成员被认为是主节点，而其他节点被认为是次要节点。
+
+主节点接收所有写操作。复制集可以只有一个主要能够使用{w：“多数”}写入注意来确认写入;虽然在某些情况下，另一个蒙古人的例子可能暂时相信自己也是小学的。 [1]主记录在其操作日志中的数据集的所有更改，即oplog。有关主节点操作的更多信息，请参阅副本集主。
+
+![](https://docs.mongodb.com/manual/_images/replica-set-read-write-operations-primary.bakedsvg.svg)
+
+次级复制主要的oplog并将操作应用于其数据集，以便二进制数据集反映主数据集。如果小学不可用，合格的中学将举行选举来选举新的小学。有关次要成员的更多信息，请参阅副本集第二个成员。
+
+![](https://docs.mongodb.com/manual/_images/replica-set-primary-with-two-secondaries.bakedsvg.svg)
+
+您可以向副本集添加一个额外的mongod实例作为仲裁器。仲裁者不保留数据集。仲裁者的目的是通过响应其他副本集成员的心跳和选举请求来维护副本集中的法定人数。因为它们不存储数据集，所以与具有数据集的完全功能的副本集成员相比，仲裁器可以是以更便宜的资源成本提供副本集仲裁功能的好方法。如果您的副本组成员数量相当，则添加一个仲裁器以获得大部分选票。仲裁员不需要专用硬件。有关仲裁器的更多信息，请参阅副本集仲裁器。
+
+![](https://docs.mongodb.com/manual/_images/replica-set-primary-with-secondary-and-arbiter.bakedsvg.svg)
+
+
+仲裁人将永远是仲裁者，而主要的仲裁人则可以下台，成为仲裁人，仲裁人可能在选举期间成为主要仲裁员。
+
+### 3. 异步复制
+
+次要应用主要异步的操作。通过在主要之后应用操作，即使一个或多个成员失败，集也可以继续运行。有关复制机制的更多信息，请参阅副本集Oplog和副本集数据同步。
+
+### 4. 自动故障转移
+
+当一名小学生不与该组其他成员沟通超过10秒钟时，合格的中学生将举行选举，选举新的小学生。举行选举和获得大多数议员选票的第一中学是小学。
+
+版本3.2中的新功能：MongoDB引入了版本1的复制协议（protocolVersion：1），以减少副本集的故障转移时间，并加速多个同时初级的检测。默认情况下，新的副本集将使用protocolVersion：1.以前版本的MongoDB使用协议的版本0。
+
+![](https://docs.mongodb.com/manual/_images/replica-set-trigger-election.bakedsvg.svg)
+
+虽然时间不同，故障转移过程通常在一分钟内完成。例如，副本集的成员可能需要10-30秒才能声明主要访问（参见electionTimeoutMillis）。其余的二次选举中，选举自己选为新的小学。选举本身可能需要10-30秒。
+
+3.2版本更改：从MongoDB 3.2开始，通过复制选择增强功能，MongoDB减少了副本集的故障切换时间。有关细节，请参阅复制选择增强。
+
+### 5. 读操作
+
+
+默认情况下，客户端从主要的[1]读取;然而，客户端可以指定读取首选项以将读取操作发送到辅助节点。对副本的异步复制意味着从次级读取可能会返回不反映主数据的状态的数据。有关从副本集读取的信息，请参阅读取首选项。
+
+在MongoDB中，客户端可以在写入持久之前看到写入的结果：
+
+无论写入问题，使用“本地”（即默认）readConcern的其他客户端可以在向发出客户端确认写入操作之前看到写入操作的结果。
+使用“local”（即默认值）readConcern的客户端可以读取可能随后回滚的数据。
+
+### 6. 附加功能
+
+副本集提供了许多选项来支持应用程序需求。例如，您可以在多个数据中心部署一个包含成员的副本集，或通过调整某些成员的成员[n] .priority来控制选举结果。副本集还支持报告，灾难恢复或备份功能的专用成员。
+
+有关详细信息，请参阅优先级0副本集成员，隐藏副本集成员和延迟副本集成员。
+
+
+
+## 分片
+
+分片是一种在多台机器间分配数据的方法。 MongoDB使用分片来支持具有非常大的数据集和高吞吐量操作的部署。
+
+具有大数据集或高吞吐量应用程序的数据库系统可能会挑战单个服务器的容量。例如，高查询率可能会耗尽服务器的CPU容量。大于系统RAM的工作集大小会影响磁盘驱动器的I / O容量。
+
+解决系统增长有两种方法：垂直和水平缩放。
+
+垂直缩放涉及增加单个服务器的容量，例如使用更强大的CPU，增加更多的RAM或增加存储空间。可用技术的局限性可能会限制单个机器对于给定的工作负载而言不够强大。此外，基于云的提供商将根据可用的硬件配置进行硬顶。因此，垂直缩放具有实际的最大值。
+
+水平缩放涉及将系统数据集和负载划分到多个服务器上，增加额外的服务器以根据需要增加容量。虽然单台机器的整体速度或容量可能不高，但每台机器处理整个工作负载的一部分，可能提供比单个高速大容量服务器更好的效率。扩展部署容量只需要根据需要增加额外的服务器，这可能比单个机器的高端硬件要低。权衡是基础设施和部署维护的复杂性。
+
+MongoDB支持通过分片进行横向缩放。
+
+### 1. 分片集群
+
+MongoDB分片集群由以下组件组成：
+
+分片：每个分片包含分片数据的一部分。每个分片可以部署为副本集。
+mongos：mongos作为查询路由器，提供客户端应用程序和分片集群之间的接口。
+配置服务器：配置服务器存储集群的元数据和配置设置。从MongoDB 3.4开始，配置服务器必须部署为副本集（CSRS）。
+以下图形描述了分片集群中组件的交互：
+![](https://docs.mongodb.com/manual/_images/sharded-cluster-production-architecture.bakedsvg.svg)
+MongoDB将集合级别的数据分片，将集合数据分布在集群中的分片上。
+
+### 2. 分片键
+为了将文档分发到一个集合中，MongoDB使用分片键对集合进行分区。分片键由目标集合中每个文档中存在的不可变字段或字段组成。
+
+在分割集合时选择分片键。分片后的分片键的选择不能改变。分片集合只能有一个分片键。请参阅碎片关键规格。
+
+要分割非空集合，集合必须具有以分片键开头的索引。对于空集合，如果集合尚未具有指定分片键的适当索引，则MongoDB将创建索引。请参阅碎片键索引。
+
+分片键的选择会影响分片集群的性能，效率和可扩展性。具有最佳硬件和基础设施的集群可以通过选择分片密钥来瓶颈。分片键及其后备索引的选择也会影响您的集群可以使用的分片策略。
+
+### 3. 块
+
+MongoDB将分片数据分割成块。每个块都有一个包含低级和独占的上限，基于分片键。
+
+MongoDB使用划分的群集平衡器迁移碎片集群中的碎片。平衡器试图在群集中的所有分片上实现均匀的块。
+
+### 4. 分片优点
+
+#### 读写
+
+MongoDB将读写工作负载分布在分片分区中的分片上，从而允许每个分片处理集群操作的一个子集。通过添加更多的分片，可以跨集群水平地缩放读取和写入工作负载。
+
+对于包含分片键或复合分片键的前缀的查询，mongos可以以特定的分片或一组分片为目标查询。这些有针对性的操作通常比对群集中每个分片的广播效率更高。
+
+#### 存储容量
+
+分片通过集群中的分片分发数据，从而允许每个分片包含总集群数据的子集。随着数据集的增长，其他分片增加了集群的存储容量。
+
+#### 高可用性 
+
+分片集群可以继续执行部分读/写操作，即使一个或多个分片不可用。虽然在停机期间无法访问不可用的分片上的数据子集，但是可用分片上的读取或写入仍然可以成功。
+
+从MongoDB 3.2开始，您可以将配置服务器部署为副本集。只要大部分副本集可用，带有配置服务器副本集（CSRS）的分片集群可以继续处理读取和写入。在3.4版本中，MongoDB删除了对SCCC配置服务器的支持。要将配置服务器从SCCC升级到CSRS，请参阅将配置服务器升级到副本集。
+
+在生产环境中，应将各个碎片部署为副本集，从而提供更多的冗余和可用性。
+
+### 5. 分片前注意事项
+
+分片的群集基础架构要求和复杂性需要仔细的规划，执行和维护。
+
+为确保集群性能和效率，必须认真考虑选择分片密钥。分片后您不能更改分片键，也不能取消收集分片。请参阅选择碎片密钥。
+
+分片具有一定的操作要求和限制。有关详细信息，请参阅分片集群中的操作限制。
+
+如果查询不包括分片密钥或复合分片密钥的前缀，则mongos会执行广播操作，查询分片集群中的所有分片。这些分散/收集查询可以是长时间运行的操作。
+
+### 6. 碎片和未分类收藏
+
+数据库可以混合使用分片和未完成的集合。分片集合被分区并分布在集群中的分片上。未分类的集合存储在主分片上。每个数据库都有自己的主分片。
+
+![](https://docs.mongodb.com/manual/_images/sharded-cluster-primary-shard.bakedsvg.svg)
+
+### 7. 连接到分片集群
+
+您必须连接到mongos路由器才能与分片集群中的任何集合进行交互。这包括分片和未知的集合。为了执行读写操作，客户端不应连接到单个分片。
+![](https://docs.mongodb.com/manual/_images/sharded-cluster-mixed.bakedsvg.svg)
+
+您可以通过连接到mongod的方式连接到一个mongos，例如通过mongo shell或MongoDB驱动程序
+
+### 8. 分片策略
+
+MongoDB支持两种分片策略，用于在分片集群中分配数据。
+
+#### 碎片
+散列碎片涉及计算碎片密钥字段值的散列。然后，基于散列的分片键值为每个组分配一个范围。
+当使用散列索引解析查询时，MongoDB会自动计算哈希值。应用程序不需要计算哈希值。
+
+![](https://docs.mongodb.com/manual/_images/sharding-hash-based.bakedsvg.svg)
+
+虽然一系列分片键可能“关闭”，但它们的散列值不大可能在同一块。基于哈希值的数据分布有助于更均匀的数据分布，特别是在分片键单调变化的数据集中。
+
+然而，散列分布意味着在分片密钥上的基于范围的查询不太可能针对单个分片，导致更多的群集广播操作。
+
+#### 远程分片
+
+远程分片包括基于分片键值将数据划分为范围。然后根据分片键值分配一个范围。
+
+![](https://docs.mongodb.com/manual/_images/sharding-range-based.bakedsvg.svg)
+
+值为“接近”的分片键的范围更可能驻留在相同的块上。这允许目标操作，因为mongos可以将操作路由到仅包含所需数据的分片。
+
+远程分片的效率取决于所选择的分片密钥。数据分配不佳可能导致数据分布不均匀，这可能会抵消分片的一些好处，也可能导致性能瓶颈。查看范围分片的分片键选择。
+
+### 9. 分片集群中的区域
+
+在分片集群中，您可以基于分片键创建分片数据区域。您可以将每个区域与集群中的一个或多个分片相关联。分片可以与任何数量的非冲突区域相关联。在平衡群集中，MongoDB将区域覆盖的块仅迁移到与区域相关联的碎片。
+
+每个区域覆盖一个或多个分片键值范围。区域覆盖的每个范围总是包含其下边界，不包括其上边界。
+
+![](https://docs.mongodb.com/manual/_images/sharded-cluster-zones.bakedsvg.svg)
+
+在定义要覆盖的区域的新范围时，必须使用分片键中包含的字段。如果使用复合分片键，则范围必须包含分片键的前缀。有关详细信息，请参阅区域中的分片键。
+
+选择碎片密钥时，请仔细考虑以后使用区域划分的可能性，因为在分割集合后无法更改碎片密钥。
+
+最常见的是，区域可以改善跨越多个数据中心的分片集群的数据位置。
+
+### 10. 分片中的排序
+
+使用shardCollection命令与排序规则：{locale：“simple”}选项分隔具有默认排序规则的集合。成功的分片要求：
+
+该集合必须具有前缀为分片键的索引
+索引必须具有排序规则{locale：“simple”}
+在使用归类创建新集合时，请确保在分割集合之前满足这些条件。
+
+备注：
+分片集合上的查询继续使用为集合配置的默认排序规则。要使用分片键索引的简单归类，请在查询的排序规则文档中指定{locale：“simple”}。
+### 11. 其他资源
+
+## Mongodb集群搭建的三种方式
+Replica Set(副本集)
+简单来说就是集群当中包含了多份数据，保证主节点挂掉了，备节点能继续提供数据服务，提供的前提就是数据需要和主节点一致。如下图:
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/replica-set.png)
+集群方案：
+Mongodb(M)表示主节点，Mongodb(S)表示备节点，Mongodb(A)表示仲裁节点。主备节点存储数据，仲裁节点不存储数据。客户端同时连接主节点与备节点，不连接仲裁节点。
+默认设置下，主节点提供所有增删查改服务，备节点不提供任何服务。但是可以通过设置使备节点提供查询服务，这样就可以减少主节点的压力，当客户端进行数据查询时，请求自动转到备节点上。这个设置叫做Read Preference Modes，同时Java客户端提供了简单的配置方式，可以不必直接对数据库进行操作。
+仲裁节点是一种特殊的节点，它本身并不存储数据，主要的作用是决定哪一个备节点在主节点挂掉之后提升为主节点，所以客户端不需要连接此节点。这里虽然只有一个备节点，但是仍然需要一个仲裁节点来提升备节点级别。
+搭建：
+
+1. 建立数据文件夹
+mkdir -p ~/mongodb-demo/data/master   
+mkdir -p ~/mongodb-demo/data/slaver   
+mkdir -p ~/mongodb-demo/data/arbiter    
+#三个目录分别对应主，备，仲裁节点  
+2. 建立配置文件
+
+参数解释：
+dbpath：数据存放目录
+logpath：日志存放路径
+pidfilepath：进程文件，方便停止mongodb
+directoryperdb：为每一个数据库按照数据库名建立文件夹存放
+logappend：以追加的方式记录日志
+replSet：replica set的名字
+bind_ip：mongodb所绑定的ip地址
+port：mongodb进程所使用的端口号，默认为27017
+oplogSize：mongodb操作日志文件的最大大小。单位为Mb，默认为硬盘剩余空间的5%
+fork：以后台方式运行进程
+noprealloc：不预先分配存储
+
+3. 启动mongodb
+进入每个mongodb节点的bin目录下
+cd /Users/nanfang/2017/mongdb-demo/mongodb-osx-x86_64-3.4.6/bin
+
+* ./mongod -f /Users/nanfang/2017/mongdb-demo/cluster/conf/master.conf
+* ./mongod -f /Users/nanfang/2017/mongdb-demo/cluster/conf/slaver.conf
+* ./mongod -f /Users/nanfang/2017/mongdb-demo/cluster/conf/arbiter.conf
+
+4. 配置主，备，仲裁节点
+可以通过客户端连接mongodb，也可以直接在三个节点中选择一个连接mongodb
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongodb-connect-master.png)
+
+cfg={ _id:"testrs", members:[ {_id:0,host:'192.168.0.105:27018',priority:2}, {_id:1,host:'192.168.0.105:27019',priority:1},   
+{_id:2,host:'192.168.0.105:27020',arbiterOnly:true}] }; 
+
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongdb-cluster-config.png)
+5. 测试
+rs.status()
+查看集群状态
+1. 往主节点插入数据，能从备节点查到之前插入的数据
+
+#建立test 数据库。  
+use test;  
+  
+往testdb表插入数据。  
+> db.testdb.insert({"test1":"testval1"})  
+  
+查询testdb数据看看是否成功。  
+> db.testdb.find();  
+{ "_id" : ObjectId("5988a9e4bee1039149dd37dd"), "test1" : "testval1" }  
+
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongodb-master-insert.png)
+
+看备节点
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongodb-slaver-error.png)
+
+**首先这是正常的，因为SECONDARY是不允许读写的， 在写多读少的应用中，使用Replica Sets来实现读写分离。通过在连接时指定或者在主库指定slaveOk，由Secondary来分担读的压力，Primary只承担写操作。
+对于replica set 中的secondary 节点默认是不可读的**
+
+#解决方案
+在主库上设置 slaveok=ok
+执行 db.getMongo().setSlaveOk();
+从库上
+rs.slaveOk()
+
+
+
+可以看到主机的同步日志
+
+2. 故障转移
+如果主服务器挂掉了，从服务器可以正常运转吗？
+a. 先测试下从服务器可以当成主服务器吗，也就是往从服务器里写能够同步主服务器吗？
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongodb-slaver-insert-error.png)
+
+可以看到 mongodb的从节点是不能提供写操作的，只能提供读操作。
+
+如果从服务器挂掉，主服务器还可以提供服务。如果主服务器挂掉了从服务器能否自动变为可写。
+先杀掉原来的mongodb主服务器。
+
+---
+
+Sharding
+
+和Replica Set类似，都需要一个仲裁节点，但是Sharding还需要配置节点和路由节点。就三种集群搭建方式来说，这种是最复杂的。部署图如下：
+![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongodb-sharding.png)
+
+1. 启动数据节点
+2. 启动配置节点
+3. 启动路由节点
+4. 配置Replica Set
+5. 配置Sharding
