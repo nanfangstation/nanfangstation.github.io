@@ -33,7 +33,7 @@ MongoDB中的一个副本集是保持相同数据集的一组mongod进程。副�
 
 ![](https://docs.mongodb.com/manual/_images/replica-set-primary-with-two-secondaries.bakedsvg.svg)
 
-您可以向副本集添加一个额外的mongod实例作为仲裁节点。仲裁节点不保留数据集。仲裁节点的目的是通过响应其他副本集成员的心跳和选举请求来维护副本集中的法定人数。因为它们不存储数据集，所以与具有数据集的完全功能的副本集成员相比，仲裁节点可以是以更便宜的资源成本提供副本集仲裁功能的好方法。如果您的副本组成员数量相当，则添加一个仲裁节点以获得大部分选票。仲裁节点不需要专用硬件。
+可以向副本集添加一个额外的mongod实例作为仲裁节点。仲裁节点不保留数据集。仲裁节点的目的是通过响应其他副本集成员的心跳和选举请求来维护副本集中的法定人数。因为它们不存储数据集，所以与具有数据集的完全功能的副本集成员相比，仲裁节点可以是以更便宜的资源成本提供副本集仲裁功能的好方法。如果您的副本组成员数量相当，则添加一个仲裁节点以获得大部分选票。仲裁节点不需要专用硬件。
 
 ![](https://docs.mongodb.com/manual/_images/replica-set-primary-with-secondary-and-arbiter.bakedsvg.svg)
 
@@ -94,7 +94,7 @@ MongoDB将集合级别的数据分片，将集合数据分布在集群中的分�
 ### 2. 分片key
 为了将文档分发到一个集合中，MongoDB使用分片对集合进行分区。分片key由不可变字段或目标集合中每个文档中存在的字段组成。
 
-在分割集合时选择分片key。分片后的分片key的选择不能改变。分片集合只能有一个分片key。
+选择分片key对集合进行分片。分片后的分片key的选择不能改变。分片集合只能有一个分片key。
 
 对一个非空集合分片，集合必须有以分片key为开头的索引。对于空集合，如果集合尚未具有指定分片key的适当索引，则MongoDB将创建索引。
 
@@ -105,7 +105,7 @@ MongoDB将集合级别的数据分片，将集合数据分布在集群中的分�
 MongoDB将分片数据分割成块。每个块基于分片key都有一个包含较低和独占范围。
 
 MongoDB使用划分集群平衡器在分片集群中的分片之间迁移块。平衡器试图在群集中的所有分片上实现均匀的块。
-----未完待续
+
 ### 4. 分片优点
 
 #### 读写
@@ -122,29 +122,29 @@ MongoDB将读写工作负载分布在分片集群中的分片上，从而允许�
 
 分片集群可以继续执行部分读/写操作，即使一个或多个分片不可用。虽然在停机期间无法访问不可用的分片上的数据子集，但是可用分片上的读取或写入仍然可以成功。
 
-从MongoDB 3.2开始，您可以将配置服务器部署为副本集。只要大部分副本集可用，带有配置服务器副本集（CSRS）的分片集群可以继续处理读取和写入。在3.4版本中，MongoDB删除了对SCCC配置服务器的支持。要将配置服务器从SCCC升级到CSRS，请参阅将配置服务器升级到副本集。
+从MongoDB 3.2开始，可以将配置服务器部署为副本集。只要大部分副本集可用，带有配置服务器副本集（CSRS）的分片集群可以继续处理读取和写入。在3.4版本中，MongoDB删除了对SCCC配置服务器的支持。要将配置服务器从SCCC升级到CSRS。
 
-在生产环境中，应将各个碎片部署为副本集，从而提供更多的冗余和可用性。
+在生产环境中，应将各个分片部署为副本集，从而提供更多的冗余和可用性。
 
 ### 5. 分片前注意事项
 
-分片的群集基础架构要求和复杂性需要仔细的规划，执行和维护。
+分片群集的基础架构要求和复杂性需要仔细的规划，执行和维护。
 
-为确保集群性能和效率，必须认真考虑选择分片密钥。分片后您不能更改分片键，也不能取消收集分片。请参阅选择碎片密钥。
+为确保集群性能和效率，必须认真考虑选择分片key。分片后不能更改分片key，也不能取消一个分片的集合。
 
-分片具有一定的操作要求和限制。有关详细信息，请参阅分片集群中的操作限制。
+分片具有一定的操作要求和限制。
 
-如果查询不包括分片密钥或复合分片密钥的前缀，则mongos会执行广播操作，查询分片集群中的所有分片。这些分散/收集查询可以是长时间运行的操作。
+如果查询不包括分片key或复合分片key的前缀，则mongos会执行广播操作，查询分片集群中的所有分片。这些分散/聚合的查询可以是长时间运行的操作。
 
-### 6. 碎片和未分类收藏
+### 6. 分片和未分片集合
 
-数据库可以混合使用分片和未完成的集合。分片集合被分区并分布在集群中的分片上。未分类的集合存储在主分片上。每个数据库都有自己的主分片。
+数据库可以混合使用分片和未分片的集合。分片集合被分区并分布在集群中的分片上。未分片的集合存储在主分片上。每个数据库都有自己的主分片。
 
 ![](https://docs.mongodb.com/manual/_images/sharded-cluster-primary-shard.bakedsvg.svg)
 
 ### 7. 连接到分片集群
 
-您必须连接到mongos路由器才能与分片集群中的任何集合进行交互。这包括分片和未知的集合。为了执行读写操作，客户端不应连接到单个分片。
+必须连接到mongos路由器才能与分片集群中的任何集合进行交互。这包括分片和未分片的集合。为了执行读写操作，客户端不应连接到单个分片。
 ![](https://docs.mongodb.com/manual/_images/sharded-cluster-mixed.bakedsvg.svg)
 
 您可以通过连接到mongod的方式连接到一个mongos，例如通过mongo shell或MongoDB驱动程序
@@ -153,37 +153,37 @@ MongoDB将读写工作负载分布在分片集群中的分片上，从而允许�
 
 MongoDB支持两种分片策略，用于在分片集群中分配数据。
 
-#### 碎片
-散列碎片涉及计算碎片密钥字段值的散列。然后，基于散列的分片键值为每个组分配一个范围。
+#### 哈希分片
+哈希分片涉及计算分片key字段值的哈希值。然后，基于分片key的哈希值为每一个块分配一个范围。
 当使用散列索引解析查询时，MongoDB会自动计算哈希值。应用程序不需要计算哈希值。
 
 ![](https://docs.mongodb.com/manual/_images/sharding-hash-based.bakedsvg.svg)
 
-虽然一系列分片键可能“关闭”，但它们的散列值不大可能在同一块。基于哈希值的数据分布有助于更均匀的数据分布，特别是在分片键单调变化的数据集中。
+虽然一系列分片key可能“close”，但它们的散列值不大可能在同一块。基于哈希值的数据分布有助于更均匀的数据分布，特别是在分片key单调变化的数据集中。
 
-然而，散列分布意味着在分片密钥上的基于范围的查询不太可能针对单个分片，导致更多的群集广播操作。
+然而，散列分布意味着在分片key上的基于范围的查询不太可能针对单个分片，导致更多的群集广播操作。
 
 #### 远程分片
 
-远程分片包括基于分片键值将数据划分为范围。然后根据分片键值分配一个范围。
+远程分片包括基于分片key的值将数据划分范围。然后根据分片key值为每一个块分配一个范围。
 
 ![](https://docs.mongodb.com/manual/_images/sharding-range-based.bakedsvg.svg)
 
-值为“接近”的分片键的范围更可能驻留在相同的块上。这允许目标操作，因为mongos可以将操作路由到仅包含所需数据的分片。
+分片key值为'close'的更可能驻留在相同的块上。这样就允许目标操作通过mongos将操作路由到仅包含所需数据的分片。
 
-远程分片的效率取决于所选择的分片密钥。数据分配不佳可能导致数据分布不均匀，这可能会抵消分片的一些好处，也可能导致性能瓶颈。查看范围分片的分片键选择。
+远程分片的效率取决于所选择的分片key。数据分配不佳可能导致数据分布不均匀，这可能会抵消分片的一些好处，也可能导致性能瓶颈。
 
 ### 9. 分片集群中的区域
 
-在分片集群中，您可以基于分片键创建分片数据区域。您可以将每个区域与集群中的一个或多个分片相关联。分片可以与任何数量的非冲突区域相关联。在平衡群集中，MongoDB将区域覆盖的块仅迁移到与区域相关联的碎片。
+在分片集群中，您可以基于分片key创建分片数据区域。可以将每个区域与集群中的一个或多个分片相关联。分片可以与任何数量的非冲突区域相关联。在平衡群集中，MongoDB将区域覆盖的块仅迁移到与区域相关联的分片。
 
 每个区域覆盖一个或多个分片键值范围。区域覆盖的每个范围总是包含其下边界，不包括其上边界。
 
 ![](https://docs.mongodb.com/manual/_images/sharded-cluster-zones.bakedsvg.svg)
 
-在定义要覆盖的区域的新范围时，必须使用分片键中包含的字段。如果使用复合分片键，则范围必须包含分片键的前缀。有关详细信息，请参阅区域中的分片键。
+在定义要覆盖的区域的新范围时，必须使用分片key中包含的字段。如果使用复合分片键，则范围必须包含分片键的前缀。
 
-选择碎片密钥时，请仔细考虑以后使用区域划分的可能性，因为在分割集合后无法更改碎片密钥。
+选择分片key时，需要仔细考虑以后使用区域划分的可能性，因为在集合分片后无法更改分片key。
 
 最常见的是，区域可以改善跨越多个数据中心的分片集群的数据位置。
 
@@ -191,30 +191,162 @@ MongoDB支持两种分片策略，用于在分片集群中分配数据。
 
 使用shardCollection命令与排序规则：{locale：“simple”}选项分隔具有默认排序规则的集合。成功的分片要求：
 
-该集合必须具有前缀为分片键的索引
-索引必须具有排序规则{locale：“simple”}
-在使用归类创建新集合时，请确保在分割集合之前满足这些条件。
+* 该集合必须具有前缀为分片键的索引
+* 索引必须具有排序规则{locale：“simple”}
+在使用归类创建新集合时，请确保在分片集合之前满足这些条件。
 
 备注：
-分片集合上的查询继续使用为集合配置的默认排序规则。要使用分片键索引的简单归类，请在查询的排序规则文档中指定{locale：“simple”}。
+分片集合上的查询继续使用为集合配置的默认排序规则。要使用分片键索引的简单归类，在查询的排序规则文档中指定{locale：“simple”}。
 ### 11. 其他资源
 
 ## Mongodb集群搭建的三种方式
-Replica Set(副本集)
+
+### 1. 主从模式
+官方已经不推荐这种方式，简单介绍下。
+![](http://cms.csdnimg.cn/article/201404/09/5344f1ce14589.jpg)
+
+```
+#进入mongodb的bin目录下
+cd /Users/nanfang/2017/mongdb-demo/mongodb-osx-x86_64-3.4.6/bin
+#主节点 
+./mongod -f /Users/nanfang/2017/mongdb-demo/master-slave/conf/master.conf -master
+./mongod --master --dbpath /Users/nanfang/2017/mongdb-demo/master-slave       
+#从节点
+./mongod -slave -source 192.168.119.238:27018 -f /Users/nanfang/2017/mongdb-demo/master-slave/conf/slaver.conf
+./mongod --slave --source <masterip:masterport> --dbpath /Users/nanfang/2017/mongdb-demo/master-slave/data/slavedb      
+```
+./mongod --slave --source 127.0.0.1:27017 --dbpath /Users/nanfang/2017/mongdb-demo/master-slave/data/slavedb      
+![](/Users/nanfang/desktop/mongodb-master-slave-master.png)
+主节点日志输出
+```
+#成功
+2017-08-09T14:37:10.071+0800 I CONTROL  [initandlisten] MongoDB starting : pid=9168 port=27018 dbpath=/Users/nanfang/2017/mongdb-demo/master-slave/data/master master=1 64-bit host=pengnanfangdeMacBook-Pro.local
+...
+2017-08-09T14:37:11.188+0800 I NETWORK  [thread1] waiting for connections on port 27018
+```
+---
+从节点日志输出
+```
+#成功
+2017-08-09T14:39:53.576+0800 I CONTROL  [initandlisten] MongoDB starting : pid=9217 port=27019 dbpath=/Users/nanfang/2017/mongdb-demo/master-slave/data/slaver slave=1 64-bit host=pengnanfangdeMacBook-Pro.local
+...
+2017-08-09T14:39:54.435+0800 I NETWORK  [thread1] waiting for connections on port 27019
+
+#同步
+2017-08-09T14:39:55.615+0800 I REPL     [replslave] syncing from host:192.168.119.238:27018
+2017-08-09T14:39:56.618+0800 I REPL     [replslave] sleep 2 sec before next pass
+2017-08-09T14:39:58.621+0800 I REPL     [replslave] syncing from host:192.168.119.238:27018
+2017-08-09T14:39:59.627+0800 I REPL     [replslave] syncing from host:192.168.119.238:27018
+```
+
+#### 测试主从复制
+在主节点上连接到终端：
+```
+> use test;
+switched to db test
+> db.testdb.insert({"test1":"testval1"})
+WriteResult({ "nInserted" : 1 })
+> db.testdb.find();
+{ "_id" : ObjectId("598ab03a422ba64b43e7ae48"), "test1" : "testval1" }
+```
+
+主机同步日志
+```
+2017-08-09T14:47:55.940+0800 I NETWORK  [thread1] connection accepted from 192.168.119.238:60270 #7 (2 connections now open)
+```
+查看从节点
+```
+> show dbs;
+2017-08-09T14:51:48.485+0800 E QUERY    [thread1] Error: listDatabases failed:{
+    "ok" : 0,
+    "errmsg" : "not master and slaveOk=false",
+    "code" : 13435,
+    "codeName" : "NotMasterNoSlaveOk"
+} :
+_getErrorWithCode@src/mongo/shell/utils.js:25:13
+Mongo.prototype.getDBs@src/mongo/shell/mongo.js:62:1
+shellHelper.show@src/mongo/shell/utils.js:769:19
+shellHelper@src/mongo/shell/utils.js:659:15
+@(shellhelp2):1:1
+```
+
+解决方案
+在主库上设置 slaveok=ok 执行 db.getMongo().setSlaveOk(); 从库上执行 rs.slaveOk();
+```
+> show dbs;
+admin  0.000GB
+local  0.000GB
+test   0.000GB
+> use test;
+switched to db test
+> db.testdb.find();
+{ "_id" : ObjectId("598ab03a422ba64b43e7ae48"), "test1" : "testval1" }
+```
+
+#### 故障转移测试
+a. 测试从节点是否可以当成主节点
+```
+> db.testdb.insert({"test2":"testval2"});
+WriteResult({ "writeError" : { "code" : 10107, "errmsg" : "not master" } })
+```
+
+b. 模拟主节点挂掉，从节点是否自动变为可写
+kill主节点
+从节点日志
+```
+2017-08-09T15:03:40.564+0800 I REPL     [replslave] AssertionException 10278 dbclient error communicating with server: 192.168.119.238:27018
+2017-08-09T15:03:40.564+0800 I -        [replslave] caught exception (socket exception [FAILED_STATE] for 192.168.119.238:27018 (192.168.119.238) failed) in destructor (kill)
+2017-08-09T15:03:40.564+0800 I REPL     [replslave] sleep 2 sec before next pass
+2017-08-09T15:03:42.569+0800 I REPL     [replslave] syncing from host:192.168.119.238:27018
+2017-08-09T15:03:42.569+0800 W NETWORK  [replslave] Failed to connect to 192.168.119.238:27018, in(checking socket for error after poll), reason: Connection refused
+2017-08-09T15:03:42.569+0800 E REPL     [replslave] couldn't connect to server 192.168.119.238:27018, connection attempt failed
+2017-08-09T15:03:42.569+0800 I REPL     [replslave] sleep 3 sec before next pass
+2017-08-09T15:03:45.571+0800 I REPL     [replslave] syncing from host:192.168.119.238:27018
+2017-08-09T15:03:45.574+0800 W NETWORK  [replslave] Failed to connect to 192.168.119.238:27018, in(checking socket for error after poll), reason: Connection refused
+```
+
+从节点是否自动可写
+```
+> db.testdb.insert({"test2":"testval2"});
+WriteResult({ "writeError" : { "code" : 10107, "errmsg" : "not master" } })
+```
+
+**不能**，需要手工停止从节点后将该节点标识为主节点
+
+### 2. Replica Set(副本集)
 简单来说就是集群当中包含了多份数据，保证主节点挂掉了，备节点能继续提供数据服务，提供的前提就是数据需要和主节点一致。如下图:
 ![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/replica-set.png)
-集群方案：
+#### 集群方案
 Mongodb(M)表示主节点，Mongodb(S)表示备节点，Mongodb(A)表示仲裁节点。主备节点存储数据，仲裁节点不存储数据。客户端同时连接主节点与备节点，不连接仲裁节点。
 默认设置下，主节点提供所有增删查改服务，备节点不提供任何服务。但是可以通过设置使备节点提供查询服务，这样就可以减少主节点的压力，当客户端进行数据查询时，请求自动转到备节点上。这个设置叫做Read Preference Modes，同时Java客户端提供了简单的配置方式，可以不必直接对数据库进行操作。
 仲裁节点是一种特殊的节点，它本身并不存储数据，主要的作用是决定哪一个备节点在主节点挂掉之后提升为主节点，所以客户端不需要连接此节点。这里虽然只有一个备节点，但是仍然需要一个仲裁节点来提升备节点级别。
-搭建：
 
-1. 建立数据文件夹
+#### 搭建
+
+##### 1. 建立数据文件夹
+三个目录分别对应主，备，仲裁节点
+```
 mkdir -p ~/mongodb-demo/data/master   
 mkdir -p ~/mongodb-demo/data/slaver   
 mkdir -p ~/mongodb-demo/data/arbiter    
-#三个目录分别对应主，备，仲裁节点  
-2. 建立配置文件
+```  
+
+##### 2. 建立配置文件
+```
+#以主节点为例
+#master.conf 
+dbpath=/Users/nanfang/2017/mongdb-demo/cluster/data/master  
+logpath=/Users/nanfang/2017/mongdb-demo/cluster/log/master.log  
+pidfilepath=/Users/nanfang/2017/mongdb-demo/cluster/master.pid  
+directoryperdb=true  
+logappend=true  
+replSet=testrs  
+bind_ip=192.168.119.238 
+port=27018  
+oplogSize=10000  
+fork=true  
+noprealloc=true
+```
 
 参数解释：
 dbpath：数据存放目录
@@ -229,74 +361,188 @@ oplogSize：mongodb操作日志文件的最大大小。单位为Mb，默认为�
 fork：以后台方式运行进程
 noprealloc：不预先分配存储
 
-3. 启动mongodb
-进入每个mongodb节点的bin目录下
+##### 3. 启动mongodb
+```
+#进入每个mongodb节点的bin目录下
 cd /Users/nanfang/2017/mongdb-demo/mongodb-osx-x86_64-3.4.6/bin
+#主节点
+./mongod -f /Users/nanfang/2017/mongdb-demo/cluster/conf/master.conf
+#从节点
+./mongod -f /Users/nanfang/2017/mongdb-demo/cluster/conf/slaver.conf
+#备节点
+./mongod -f /Users/nanfang/2017/mongdb-demo/cluster/conf/arbiter.conf
+```
 
-* ./mongod -f /Users/nanfang/2017/mongdb-demo/cluster/conf/master.conf
-* ./mongod -f /Users/nanfang/2017/mongdb-demo/cluster/conf/slaver.conf
-* ./mongod -f /Users/nanfang/2017/mongdb-demo/cluster/conf/arbiter.conf
-
-4. 配置主，备，仲裁节点
+##### 4. 配置主，备，仲裁节点
 可以通过客户端连接mongodb，也可以直接在三个节点中选择一个连接mongodb
+```
+> rs.status()
+{
+    "info" : "run rs.initiate(...) if not yet done for the set",
+    "ok" : 0,
+    "errmsg" : "no replset config has been received",
+    "code" : 94,
+    "codeName" : "NotYetInitialized"
+}
+> use admin
+switched to db admin
+> cfg={ _id:"testrs", members:[ {_id:0,host:'192.168.119.238:27018',priority:2}, {_id:1,host:'192.168.119.238:27019',priority:1},
+... {_id:2,host:'192.168.119.238:27020',arbiterOnly:true}] };
+{
+    "_id" : "testrs",
+    "members" : [
+        {
+            "_id" : 0,
+            "host" : "192.168.119.238:27018",
+            "priority" : 2
+        },
+        {
+            "_id" : 1,
+            "host" : "192.168.119.238:27019",
+            "priority" : 1
+        },
+        {
+            "_id" : 2,
+            "host" : "192.168.119.238:27020",
+            "arbiterOnly" : true
+        }
+    ]
+}
+> db.testdb.insert({"test1":"testval1"})  #配置还未生效
+WriteResult({ "writeError" : { "code" : 10107, "errmsg" : "not master" } })
+> use test
+switched to db test
+> db.testdb.insert({"test1":"testval1"})
+WriteResult({ "writeError" : { "code" : 10107, "errmsg" : "not master" } })
+> rs.initiate(cfg)  #使配置生效
+{ "ok" : 1 }
+testrs:SECONDARY>
+```
 ![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongodb-connect-master.png)
 
-cfg={ _id:"testrs", members:[ {_id:0,host:'192.168.0.105:27018',priority:2}, {_id:1,host:'192.168.0.105:27019',priority:1},   
-{_id:2,host:'192.168.0.105:27020',arbiterOnly:true}] }; 
-
 ![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongdb-cluster-config.png)
-5. 测试
+
+#### 测试
+
+##### 1. 查看集群状态
 rs.status()
-查看集群状态
-1. 往主节点插入数据，能从备节点查到之前插入的数据
 
-建立test 数据库。  
-use test;  
-  
-往testdb表插入数据。  
-> db.testdb.insert({"test1":"testval1"})  
-  
-查询testdb数据看看是否成功。  
-> db.testdb.find();  
-{ "_id" : ObjectId("5988a9e4bee1039149dd37dd"), "test1" : "testval1" }  
+##### 2. 往主节点插入数据，能从备节点查到之前插入的数据
+同主从复制
 
-![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongodb-master-insert.png)
+##### 3. 停掉主节点，从节点能变成主节点提供服务
+a. 先测试从节点是否可写
+```
+testrs:SECONDARY> db.testdb.insert({"test2":"testval2"})
+WriteResult({ "writeError" : { "code" : 10107, "errmsg" : "not master" } })
+testrs:SECONDARY>
+```
+b. 主节点挂掉
+主节点状态(not reachable/healthy)
+从节点状态PRIMARY
+```
+#从节点日志
+2017-08-09T15:32:52.216+0800 I ASIO     [NetworkInterfaceASIO-Replication-0] Connecting to 192.168.119.238:27018
+2017-08-09T15:32:52.217+0800 I ASIO     [NetworkInterfaceASIO-Replication-0] Failed to connect to 192.168.119.238:27018 - HostUnreachable: Connection refused
+2017-08-09T15:32:52.217+0800 I ASIO     [NetworkInterfaceASIO-Replication-0] Dropping all pooled connections to 192.168.119.238:27018 due to failed operation on a connection
+2017-08-09T15:32:52.217+0800 I REPL     [ReplicationExecutor] Error in heartbeat request to 192.168.119.238:27018; HostUnreachable: Connection refused
+```
+测试从节点是否可写
+```
+testrs:SECONDARY> db.testdb.insert({"test2":"testval2"})
+WriteResult({ "nInserted" : 1 })
+```
 
-看备节点
-![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongodb-slaver-error.png)
-
-**首先这是正常的，因为SECONDARY是不允许读写的， 在写多读少的应用中，使用Replica Sets来实现读写分离。通过在连接时指定或者在主库指定slaveOk，由Secondary来分担读的压力，Primary只承担写操作。
-对于replica set 中的secondary 节点默认是不可读的**
-
-#解决方案
-在主库上设置 slaveok=ok
-执行 db.getMongo().setSlaveOk();
-从库上
-rs.slaveOk()
-
-
-
-可以看到主机的同步日志
-
-2. 故障转移
-如果主服务器挂掉了，从服务器可以正常运转吗？
-a. 先测试下从服务器可以当成主服务器吗，也就是往从服务器里写能够同步主服务器吗？
-![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongodb-slaver-insert-error.png)
-
-可以看到 mongodb的从节点是不能提供写操作的，只能提供读操作。
-
-如果从服务器挂掉，主服务器还可以提供服务。如果主服务器挂掉了从服务器能否自动变为可写。
-先杀掉原来的mongodb主服务器。
+##### 4. 恢复主节点，备节点也能恢复其备的角色，而不是继续充当主的角色
+从主从日志中以及rs.status()看出
+主节点恢复，备节点也能恢复其备的角色，而不是继续充当主的角色
 
 ---
 
-Sharding
+### 3. 分片
+#### 概念
+分片（sharding）是指将数据库拆分，将其分散在不同的机器上的过程。将数据分散到不同的机器上，不需要功能强大的服务器就可以存储更多的数据和处理更大的负载。基本思想就是将集合切成小块，这些块分散到若干片里，每个片只负责总数据的一部分，最后通过一个均衡器来对各个分片进行均衡（数据迁移）。通过一个名为mongos的路由进程进行操作，mongos知道数据和片的对应关系（通过配置服务器）。大部分使用场景都是解决磁盘空间的问题，对于写入有可能会变差（+++里面的说明+++），查询则尽量避免跨分片查询。使用分片的时机：
 
+1. 机器的磁盘不够用了。使用分片解决磁盘空间的问题。
+2. 单个mongod已经不能满足写数据的性能要求。通过分片让写压力分散到各个分片上面，使用分片服务器自身的资源。
+3. 想把大量数据放到内存里提高性能。和上面一样，通过分片使用分片服务器自身的资源。
+
+#### 搭建
+分片中各个角色的作用:
+① 配置服务器。是一个独立的mongod进程，保存集群和分片的元数据，即各分片包含了哪些数据的信息。最先开始建立，启用日志功能。像启动普通的mongod一样启动配置服务器，指定configsvr选项。不需要太多的空间和资源，配置服务器的1KB空间相当于真是数据的200MB。保存的只是数据的分布表。当服务不可用，则变成只读，无法分块、迁移数据。
+② 路由服务器。即mongos，起到一个路由的功能，供程序连接。本身不保存数据，在启动时从配置服务器加载集群信息，开启mongos进程需要知道配置服务器的地址，指定configdb选项。
+③ 分片服务器。是一个独立普通的mongod进程，保存数据信息。可以是一个副本集也可以是单独的一台服务器。
+
+##### 1. 环境
+A：配置(3)、路由1、分片1；
+
+B：分片2，路由2；
+
+C：分片3
+
+片键：
+片键必须是一个索引，数据根据这个片键进行拆分分散。通过sh.shardCollection加会自动创建索引。一个自增的片键对写入和数据均匀分布就不是很好，因为自增的片键总会在一个分片上写入，后续达到某个阀值可能会写到别的分片。但是按照片键查询会非常高效。随机片键对数据的均匀分布效果很好。注意尽量避免在多个分片上进行查询。在所有分片上查询，mongos会对结果进行归并排序。
+
+##### 2. 配置服务器的启动。(A上开启3个，Port：20000、21000、22000) 
+配置服务器是一个普通的mongod进程，所以只需要新开一个实例即可。配置服务器必须开启1个或则3个，开启2个则会报错：
+
+BadValue need either 1 or 3 configdbs
+
+配置文件
+```
+#config_1.conf
+#数据目录
+dbpath=/Users/nanfang/2017/mongdb-demo/sharding/data/config1
+#日志文件
+logpath=/Users/nanfang/2017/mongdb-demo/sharding/log/config1.log
+#日志追加
+logappend=true
+#端口
+port = 27021
+#最大连接数
+maxConns = 50
+pidfilepath = /Users/nanfang/2017/mongdb-demo/sharding/config1.pid 
+#日志,redo log
+journal = true
+#刷写提交机制
+journalCommitInterval = 200
+#守护进程模式
+fork = true
+#刷写数据到日志的频率
+syncdelay = 60
+#storageEngine = wiredTiger
+#操作日志,单位M
+oplogSize = 1000
+#命名空间的文件大小,默认16M，最大2G。
+nssize = 16
+noauth = true
+unixSocketPrefix = /tmp
+configsvr = true
+```
+```
+cd /Users/nanfang/2017/mongdb-demo/mongodb-osx-x86_64-3.4.6/bin
+./mongod -f /Users/nanfang/2017/mongdb-demo/sharding/conf/config_1.conf
+./mongod -f /Users/nanfang/2017/mongdb-demo/sharding/conf/config_2.conf
+./mongod -f /Users/nanfang/2017/mongdb-demo/sharding/conf/config_3.conf
+```
+注1： mongodb 3.4之后，虽然要求config server为replica set，但是不支持arbiter。添加的时候，会报错：
+```
+rs.initiate(cfg)
+{
+    "ok" : 0,
+    "errmsg" : "Arbiters are not allowed in replica set configurations being used for config servers",
+    "code" : 93,
+    "codeName" : "InvalidReplicaSetConfig"
+}
+```
+
+##### 2. 路由服务器的启动。(A、B上各开启1个，Port：30000)
+路由服务器不保存数据，把日志记录一下即可。
+
+```
+cd /Users/nanfang/2017/mongdb-demo/mongodb-osx-x86_64-3.4.6/bin
+./mongos -configdb 192.168.119.238:27021,192.168.119.238:27022,192.168.119.238:27023 -port 27024 -f /Users/nanfang/2017/mongdb-demo/sharding/conf/route1.conf
+mongos -f /Users/nanfang/2017/mongdb-demo/sharding/conf/route1.conf
+```
 和Replica Set类似，都需要一个仲裁节点，但是Sharding还需要配置节点和路由节点。就三种集群搭建方式来说，这种是最复杂的。部署图如下：
 ![](https://raw.githubusercontent.com/nanfangstation/image/df3584962300ec9e1ce0f5944b72bcb9466215df/blog/2017-08/09-mongoDB/mongodb-sharding.png)
-
-1. 启动数据节点
-2. 启动配置节点
-3. 启动路由节点
-4. 配置Replica Set
-5. 配置Sharding
