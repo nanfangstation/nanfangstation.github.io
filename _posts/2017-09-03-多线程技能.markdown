@@ -1,0 +1,121 @@
+---
+layout:     post
+title:      "多线程技能"
+subtitle:   "实现多线程编程的方式主要有两种，一种是继承Thread类，另一种是实现Runnable接口。"
+date:       2017-09-03
+author:     "南方"
+header-img: "img/post-bg-dog.jpg"
+catalog: true
+tags:
+    - Java
+    - 多线程
+---
+
+## 非线程安全
+主要指多个线程对同一个对象中的同一个实例变量进行操作时会出现值被更改、值不同步的情况，进而影响程序的执行流程。
+比如：
+```
+public class MyThread extends Thread {
+    private int count = 5;
+    public void run() {
+        super.run();
+        count--;
+        System.out.println(this.currentThread().getName()+"计算count: " + count);
+    }
+}
+public class MyThreadTest {
+    @Test
+    public void run() {
+        MyThread myThread = new MyThread();
+        Thread a = new Thread(myThread, "A");
+        Thread b = new Thread(myThread, "B");
+        Thread c = new Thread(myThread, "C");
+        Thread d = new Thread(myThread, "D");
+        Thread e = new Thread(myThread, "E");
+        a.start();
+        b.start();
+        c.start();
+        d.start();
+        e.start();
+    }
+}
+```
+可能出现的结果：
+
+* B计算count: 3
+* A计算count: 3
+* C计算count: 2
+* D计算count: 1
+* E计算count: 0
+
+即出现了非线程安全问题，可以使用synchronized关键字解决。
+通过在run方法前增加synchronized关键字，使多个线程在执行run方法时，以排队的方式进行处理。synchronized可以在任意对象及方法上加锁，加锁的这段代码称为“互斥区”或“临界区”。
+
+## Thread.currentThread()和this的差异
+```
+public class CurrentThreadTest extends Thread {
+    public CurrentThreadTest() {
+        System.out.println("CurrentThreadTest---begin");
+        System.out.println("CurrentThreadTest---Thread.currentThread().getName(): " + Thread.currentThread().getName());
+        System.out.println("CurrentThreadTest---this.getName(): " + this.getName());
+        System.out.println("CurrentThreadTest---end");
+    }
+    public void run() {
+        System.out.println("run---begin");
+        System.out.println("run---Thread.currentThread().getName(): " + Thread.currentThread().getName());
+        System.out.println("run------this.getName(): " + this.getName());
+        System.out.println("run---end");
+    }
+}
+public class Test {
+    @org.junit.Test
+    public void test() {
+        CurrentThreadTest currentThreadTest = new CurrentThreadTest();
+        Thread thread = new Thread(currentThreadTest);
+        thread.setName("A");
+        thread.start();
+    }
+}
+```
+运行结果：
+* CurrentThreadTest---begin
+* CurrentThreadTest---Thread.currentThread().getName(): main
+* CurrentThreadTest---this.getName(): Thread-0
+* CurrentThreadTest---end
+* run---begin
+* run---Thread.currentThread().getName(): A
+* run------this.getName(): Thread-0
+* run---end
+
+## 分析
+首先需要强调的是: 
+
+* this代表当前类的对象
+* Thread.currentThread()返回正在被哪个线程调用
+
+上面结果说明此时的this和Thread.currentThread()指向不是同一个线程实例。
+调用new CurrentThreadTest()是main线程，因此：Thread.currentThread().getName(): main。
+而此时还没有启动CurrentThreadTest子线程，this表示当前对象，通过源代码发现在Thread类的默认构造方法中，会自动给name赋值
+```
+public Thread() {
+        init(null, null, "Thread-" + nextThreadNum(), 0);
+    }
+```
+所以this.getName(): Thread-0
+
+而执行到new Thread(currentThreadTest)时，可以看出当使用一个Runnable对象作为参数去实例化一个Thread对象时，我们直接启动的线程实际是new Thread()，而作为构造参数的currentThreadTest，赋给Thread类中的属性target，之后在Thread的run方法中调用target.run()，
+```
+public Thread(Runnable target) {
+        init(null, target, "Thread-" + nextThreadNum(), 0);
+    }
+```
+而当调用run()方法时，
+```
+@Override
+    public void run() {
+        if (target != null) {
+            target.run();
+        }
+    }
+```
+由target进行调用，所以this引用的是target，故this.getName() 为target.getName() -->Thread-0。
