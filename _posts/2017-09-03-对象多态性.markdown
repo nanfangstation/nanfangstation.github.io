@@ -1,0 +1,84 @@
+---
+layout:     post
+title:      "对象的多态性"
+date:       2017-09-03
+author:     "南方"
+header-img: "img/post-bg-dog.jpg"
+tags:
+    - Java
+---
+
+向上转型，程序会自动完成;
+
+向下转型，必须明确指出要转型的子类类型
+
+* 向上： 父类 父类对象 = 子类实例;
+
+* 向下： 子类 子类对象 = （子类）父类实例;
+
+```
+public class DemoUp {
+    @Test
+    public void test() {
+        B b = new B();
+        A a = b; // 向上转型
+        a.fun1();
+    }
+}
+
+class A {
+    public void fun1() {
+        System.out.println("A --> public void fun1(){}");
+    }
+    public void fun2() {
+        this.fun1();
+    }
+}
+
+class B extends A {
+    public void fun1() { // 覆写父类中的fun1方法
+        System.out.println("B --> public void fun1(){}");
+    }
+    public void fun3() { // 子类自己定义的方法
+        System.out.println("B --> public void fun3(){}");
+    }
+}
+```
+程序运行结果：
+
+* B --> public void fun1()
+
+如果对象发生了向上转型，所调用的方法一定是被子类覆写过的方法。
+
+```
+public class DemoDown {
+    @Test
+    public void test() {
+        C c = new D(); // 向上转型
+        D d  = (D)c; // 向下转型
+        d.fun1();
+        d.fun2();
+        d.fun3();
+    }
+}
+class C {
+    public void fun1() {
+        System.out.println("C --> public void fun1(){}");
+    }
+    public void fun2() {
+        this.fun1();
+    }
+}
+class D extends C {
+    public void fun1() { // 覆写父类中的fun1方法
+        System.out.println("D --> public void fun1(){}");
+    }
+    public void fun3() { // 子类自己定义的方法
+        System.out.println("D --> public void fun3(){}");
+    }
+}
+```
+程序运行结果：
+* D --> public void fun1(){}
+* D --> public void fun1(){}
+* D --> public void fun3(){}
