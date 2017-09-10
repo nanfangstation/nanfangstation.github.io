@@ -56,7 +56,10 @@ public class MyThreadTest {
 public class CurrentThreadTest extends Thread {
     public CurrentThreadTest() {
         System.out.println("CurrentThreadTest---begin");
+        // Thread.currentThread()返回**当前代码**正在被哪个线程调用
         System.out.println("CurrentThreadTest---Thread.currentThread().getName(): " + Thread.currentThread().getName());
+        // this.getName()返回**当前对象**的线程名称
+        // CurrentThreadTest继承了Thread,所以会先new Thread()
         System.out.println("CurrentThreadTest---this.getName(): " + this.getName());
         System.out.println("CurrentThreadTest---end");
     }
@@ -91,7 +94,7 @@ public class Test {
 首先需要强调的是: 
 
 * this代表当前类的对象
-* Thread.currentThread()返回正在被哪个线程调用
+* Thread.currentThread()返回**当前代码**正在被哪个线程调用
 
 上面结果说明此时的this和Thread.currentThread()指向不是同一个线程实例。
 调用new CurrentThreadTest()是main线程，因此：Thread.currentThread().getName(): main。

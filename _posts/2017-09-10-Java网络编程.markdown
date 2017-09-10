@@ -1,0 +1,222 @@
+---
+layout:     post
+title:      "Java网络编程"
+subtitle:   "网络可以使不同物理位置上的计算机达到资源共享和通信的目的，Java中也专门提供了专门的网络开发程序包--java.net。"
+date:       2017-09-10
+author:     "南方"
+header-img: "img/post-bg-dog.jpg"
+catalog: true
+tags:
+    - Java
+---
+
+> * Java网络编程提供了两种通信协议：TCP（传输控制协议）和UDP（数据报协议）
+
+IP地址格式：网络地址+主机地址
+
+* 网络号：用于识别主机所在的网络
+* 主机号：用于识别该网络中的主机
+
+IP地址的范围
+
+|地址分类|地址范围|
+|--|--|
+|A类地址|1.0.0.1~126.255.255.254|
+|B类地址|128.0.0.1~191.255.255.254|
+|C类地址|192.0.0.1~223.255.255.254|
+|D类地址|224.0.0.1~239.255.255.254|
+|E类地址|240.0.0.1~126.255.255.254|
+
+
+## InetAddress
+主要表示IP地址。
+```
+public class InetAddressDemo {
+    @Test
+    public void test() throws Exception {
+        InetAddress iocAdd = null; // 声明InetAddress对象
+        InetAddress[] remAdd = null;
+        iocAdd = InetAddress.getLocalHost(); // 得到本地InetAddress对象
+        remAdd = InetAddress.getAllByName("www.baidu.com"); // 得到远程InetAddresss对象
+        System.out.println("本机IP地址: " + iocAdd); // 得到本地ip地址
+        for (int i = 0; i < remAdd.length; i++) {
+            System.out.println("百度地址: " + remAdd[i]); // 得到远程ip地址
+        }
+        System.out.println("本机是否可达: " + iocAdd.isReachable(5000));
+    }
+}
+```
+
+程序运行结果
+
+* 本机IP地址: pengnanfangdeMacBook-Pro.local/192.168.0.106
+* 百度地址: www.baidu.com/115.239.211.112
+* 百度地址: www.baidu.com/115.239.210.27
+* 本机是否可达: true
+
+## URL
+统一资源定位符，可以直接找到互联网上的资源
+
+```
+public class UrlDemo {
+    @Test
+    public void test() throws IOException {
+        URL url = new URL("http", "www.baidu.com", 80, "/index.html"); // 指定操作的URL
+        InputStream input = url.openStream(); // 打开输入流，读取URL内容
+        Scanner scanner = new Scanner(input); // 实例化Scanner对象
+        scanner.useDelimiter("\n"); // 设置读取分隔符
+        while(scanner.hasNext()) {  // 不断读取内容
+            System.out.println(scanner.next()); // 输出内容
+        }
+    }
+}
+```
+运行结果是得到一串html代码
+
+## URLConnection
+封装访问远程网络资源一般方法的类，通过它可以建立与远程服务器的连接，检查远程资源的一些属性。
+```
+public class URLConnectionDemo {
+    @Test
+    public void test() throws IOException {
+        URL url = new URL("http://www.baidu.com");
+        URLConnection urlConnection = url.openConnection(); // 建立连接
+        System.out.println("内容类型:" + urlConnection.getContentType());
+        System.out.println("内容大小:" + urlConnection.getContentLength());
+
+    }
+}
+```
+结果
+
+* 内容类型:text/html
+* 内容大小:2381
+## URLEncoder和URLDecoder
+```
+public class CodeDemo {
+    @Test
+    public void test() throws UnsupportedEncodingException {
+        String keyWord = "hello 彭南方";
+        String encode  = URLEncoder.encode(keyWord, "UTF-8");
+        System.out.println("编码后: " + encode);
+        String decode = URLDecoder.decode(encode, "UTF-8");
+        System.out.println("解码后: " + decode);
+    }
+}
+```
+
+* 编码后: hello+%E5%BD%AD%E5%8D%97%E6%96%B9
+* 解码后: hello 彭南方
+
+## TCP
+ServerSocket类主要用在服务器端程序的开发上，用于接收客户端的连接请求。
+```
+public class HelloSever {
+    @Test
+    public void test() throws Exception {
+        ServerSocket server = null; // 声明ServerSocket对象
+        Socket client = null; // 一个Socket对象表示一个客户端
+        PrintStream out = null; // 声明打印流对象，以向客户端输出
+        server  = new ServerSocket(8888); // 服务器在8888端口上等待客户端的访问
+        System.out.println("服务器运行, 等待客户端连接...");
+        client = server.accept(); // 程序阻塞，等待客户端连接
+        String str = "hello world";
+        out = new PrintStream(client.getOutputStream()); // 实例化打印流信息，输出信息
+        out.println(str); // 输出信息
+        out.close(); // 关闭打印流
+        client.close(); // 关闭客户端连接
+        server.close(); // 关闭服务器连接
+    }
+}
+public class HelloClient {
+    @Test
+    public void test() throws Exception {
+        Socket client = null; // 声明Socket对象
+        client = new Socket("localhost", 8888); // 指定连接的主机和端口
+        BufferedReader buf  = null; // 声明BufferReader对象，接收信息
+        buf = new BufferedReader(new InputStreamReader(client.getInputStream())); // 取得客户端的输入流
+        String str = buf.readLine(); // 读取信息
+        System.out.println("服务器输出内容: " + str);
+        client.close(); // 关闭Socket
+        buf.close(); // 关闭输入流
+    }
+}
+```
+
+**应用多线程**
+
+对于服务器来说，加入多线程机制则是在每个用户连接之后启动一个新线程
+```
+public class EchoThread implements Runnable {
+     Socket client = null;
+     public EchoThread(Socket client) {
+         this.client = client;
+     }
+    public void run () {
+        PrintStream out = null;
+        BufferedReader buf = null;
+        try {
+            buf = new BufferedReader(new InputStreamReader(client.getInputStream()));
+            out = new PrintStream(client.getOutputStream());
+            boolean flag = true;
+            while(flag) {
+                String str = buf.readLine();
+                if (str == null || "".equals(str)) {
+                    flag = false;
+                } else {
+                    if ("bye".equals(str)) {
+                        flag = false;
+                    } else {
+                        out.println("ECHO: " + str);
+                    }
+                }
+            }
+            out.close();
+            buf.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+public class EchoDemo {
+    @Test
+    public void testServer() throws Exception {
+        ServerSocket server = null;
+        Socket client = null;
+        server = new ServerSocket(8888);
+        boolean f = true;
+        while (f) {
+            System.out.println("服务器运行, 等待客户端连接...");
+            client = server.accept();
+            new Thread(new EchoThread(client)).start();
+        }
+        server.close();
+    }
+}
+public class ClientDemo {
+    public static void main(String[] args) throws Exception {
+        Socket client = null;
+        client = new Socket("localhost", 8888);
+        BufferedReader buf = null;
+        PrintStream out = null;
+        BufferedReader input = null;
+        input = new BufferedReader(new InputStreamReader(System.in));
+        out = new PrintStream(client.getOutputStream());
+        buf = new BufferedReader(new InputStreamReader(client.getInputStream()));
+        boolean flag = true;
+        while (flag) {
+            System.out.println("输入信息: ");
+            String str = input.readLine();
+            out.println(str);
+            if ("bye".equals(str)) {
+                flag = false;
+            } else {
+                String echo = buf.readLine();
+                System.out.println(echo);
+            }
+        }
+        client.close();
+        buf.close();
+    }
+}
+```
