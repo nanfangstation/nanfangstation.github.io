@@ -4,7 +4,7 @@ title:      "Java网络编程"
 subtitle:   "网络可以使不同物理位置上的计算机达到资源共享和通信的目的，Java中也专门提供了专门的网络开发程序包--java.net。"
 date:       2017-09-10
 author:     "南方"
-header-img: "img/post-bg-dog.jpg"
+header-img: "img/post-bg-weight.jpg"
 catalog: true
 tags:
     - Java

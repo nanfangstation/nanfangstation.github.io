@@ -4,7 +4,7 @@ title:      "Java NIO基础"
 subtitle:   "Java NIO(New IO)是一个可以替代标准Java IO API的IO API（从Java 1.4开始)，Java NIO提供了与标准IO不同的IO工作方式。"
 date:       2017-09-11
 author:     "南方"
-header-img: "img/post-bg-dog.jpg"
+header-img: "img/post-bg-2017.jpg"
 catalog: true
 tags:
     - Java
@@ -249,9 +249,19 @@ Java中的字符使用unicode编码，每个字符占用两个字节。字节码
 ```
 接下来可以进行写等其它操作。
 
-### 4 Selector（异步IO）
+### 4 Selector
 
-#### 4.1 Selector（异步IO）
+#### 4.1 Selector
+
+在传统的IO模式中，需要启动多个线程以阻塞的方式监听Socket，等待数据到达并进行处理。在NIO中，Selector相当于一个事件管理器，可以向它注册不同连接的多个事件，并以一定间隔询问Selector是否有注册的事件发生，再进行后续的处理。这样只需要一个阻塞的线程，就可以管理所有的连接了。
+
+Selector管理的事件包含两个要素：
+1. 事件所对应的连接，以SocketChannel作为描述。
+2. 事件的类型，SelectionKey.OP_* 常量之一。
+两个要素唯一确定一个发生的事件。
+
+当调用 int n = selector.select() 方法时，返回值n就是新产生的事件个数。调用 selector.selectedKeys() 获取具体事件集合，每一个事件对应一个 SelectionKey 对象。通过 SelectionKey 获取对应的 SocketChannel 以及事件的类型，接下来就可以进行建立连接、读取数据等操作。
+
 Java NIO引入了选择器的概念，选择器用于监听多个通道的事件（比如：连接打开，数据到达）。因此，单个的线程可以监听多个数据通道。
 
 异步IO是一种没有阻塞的读写数据的方法，通常，在代码进行 read() 调用时，代码会阻塞直至有可供读取的数据。同样，write() 调用将会阻塞直至数据能够写入。
@@ -324,3 +334,11 @@ SelectionKey中共定义了四种事件，OP_ACCEPT（socket accept）、OP_CONN
 **Java NIO 的前生今世 之四 NIO Selector 详解** [https://segmentfault.com/a/1190000006824196](https://segmentfault.com/a/1190000006824196)
 
 **Java NIO系列教程** [http://ifeve.com/selectors/](http://ifeve.com/selectors/)
+
+**深入浅出NIO Socket实现机制** [http://www.jianshu.com/p/0d497fe5484a](http://www.jianshu.com/p/0d497fe5484a)
+
+**Java NIO(6): Selector** [https://zhuanlan.zhihu.com/p/27434028](https://zhuanlan.zhihu.com/p/27434028)
+
+**Java NIO浅析** [https://tech.meituan.com/nio.html](https://tech.meituan.com/nio.html)
+
+**Java NIO系列学习笔记（五） - Selector** [http://www.hifreud.com/2017/04/18/java-nio-05-selector/](http://www.hifreud.com/2017/04/18/java-nio-05-selector/)
