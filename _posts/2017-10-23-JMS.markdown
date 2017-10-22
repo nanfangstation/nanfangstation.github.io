@@ -1,0 +1,141 @@
+---
+layout:     post
+title:      "JMS"
+subtitle:   "Java Message Service，即Java消息服务。"
+date:       2017-10-23
+author:     "南方"
+header-img: "img/post-bg-room.jpg"
+catalog: true
+tags:
+    - JMS
+---
+
+## 前言
+
+*Java Message Service(JMS)API是一种消息传递标准，它允许基于Java Platform Enterprise Edition(Java EE)的应用程序组件创建、发送、接收和读取消息。它支持松散耦合、可靠和异步的分布式通信，提供标准的产生，发送、接收消息的接口，简化企业应用的开发。*
+
+接口文档  [https://docs.oracle.com/javaee/7/api/index.html?javax/jms/package-summary.html](https://docs.oracle.com/javaee/7/api/index.html?javax/jms/package-summary.html)
+
+它支持两种通信模型：
+
+* P2P 点到点 一个消息只能有一个接收者
+* Pub/Sub  发布/订阅 一个消息可以有多个接收者
+
+### 1.P2P
+**模式图** 
+
+<div align=center>
+<img src="http://img.blog.csdn.net/20150630220509535" alt="title"/>
+</div>
+
+**特点**
+
+1. 每个消息只有一个消费者（Consumer）(即一旦被消费，消息就不再在消息队列中)
+2. 发送者和接收者之间在时间上没有依赖性，也就是说当发送者发送了消息之后，不管接收者有没有正在运行，它不会影响到消息被发送到队列
+3. 接收者在成功接收消息之后需向队列应答成功
+
+如果你希望发送的每个消息都应该被成功处理的话，那么你需要P2P模式。
+
+### 2.Pub/Sub
+**模式图** 
+
+<div align=center>
+<img src="http://img.blog.csdn.net/20150630221227522" alt="title"/>
+</div>
+
+**特点**
+
+1. 每个消息可以有多个消费者
+2. 发布者和订阅者之间有时间上的依赖性。针对某个主题（Topic）的订阅者，它必须创建一个订阅者之后，才能消费发布者的消息，而且为了消费消息，订阅者必须保持运行的状态。
+3. 为了缓和这样严格的时间相关性，JMS允许订阅者创建一个可持久化的订阅。这样，即使订阅者没有被激活（运行），它也能接收到发布者的消息。
+ 
+如果你希望发送的消息可以不被做任何处理、或者被一个消息者处理、或者可以被多个消费者处理的话，那么可以采用Pub/Sub模型
+
+## 接口说明
+
+### 1. multi api
+多个api的主要接口如下:
+Message、BytesMessage、MapMessage、ObjectMessage、StreamMessage和TextMessage——从JMS提供程序发送到或接收到的消息。
+Queue--一个管理的对象，它封装了用于点对点消息的消息目的地的标识。
+Topic--一个管理的对象，它封装了消息目的地的身份，用于发布/订阅消息。
+Destination--Queue和Topic的公共超级类型
+
+### 2. 经典的API
+经典API提供的主要接口如下:
+ConnectionFactory--一个被客户用来创建连接的受管理对象。这个接口也被简化的API所使用。
+Connection--与JMS提供程序的活动连接
+Session--用于发送和接收消息的单线程上下文
+MessageProducer--由用于向队列或主题发送消息的会话创建的对象
+MessageConsumer——由会话创建的对象，用于接收发送到队列或主题的消息
+
+### 3. 简化的API
+简化的API提供与经典API相同的消息传递功能，但是需要更少的接口，而且使用起来更简单。简化的API提供的主要接口如下:
+ConnectionFactory-一个被客户用来创建JMSContext的受管理对象。这个接口也被传统的API所使用。
+JMSContext-一个与JMS提供程序和一个用于发送和接收消息的单线程上下文的活动连接
+JMSProducer——由JMSContext创建的对象，用于将消息发送到队列或主题
+JMSConsumer——由JMSContext创建的对象，用于接收发送到队列或主题的消息
+
+使用经典API的典型JMS客户端执行以下JMS设置过程:
+使用JNDI来查找ConnectionFactory对象
+使用JNDI来查找一个或多个目标对象
+使用ConnectionFactory创建具有消息传递限制的JMS连接对象
+使用该连接创建一个或多个JMS会话对象
+使用一个会话和目的地创建message生成器和MessageConsumer对象
+告诉连接开始发送消息
+
+相比之下，使用简化API的典型JMS客户端执行以下操作:
+使用JNDI来查找ConnectionFactory对象
+使用JNDI来查找一个或多个目标对象
+使用ConnectionFactory创建一个JMSContext对象
+使用JMSContext来创建需要的jms生产者和JMSConsumer对象。
+消息的传递是自动启动的
+此时，客户端拥有生成和使用消息所需的基本JMS设置。
+
+Destination：消息发送的目的地，也就是前面说的Queue和Topic。创建好一个消息之后，只需要把这个消息发送到目的地，消息的发送者就可以继续做自己的事情，而不用等待消息被处理完成。至于这个消息什么时候，会被哪个消费者消费，完全取决于消息的接受者。
+Message：从字面上就可以看出是被发送的消息。它的类型有如下：
+* StreamMessage：Java 数据流消息，用标准流操作来顺序的填充和读取。       
+* MapMessage：一个Map类型的消息；名称为 string 类型，而值为 Java 的基本类型。
+* TextMessage：普通字符串消息，包含一个String。            
+* ObjectMessage：对象消息，包含一个可序列化的Java 对象       
+* BytesMessage：二进制数组消息，包含一个byte[]。            
+* XMLMessage: 一个XML类型的消息。  
+最常用的是TextMessage和ObjectMessage。
+
+   
+Session：与JMS提供者所建立的会话，通过Session我们才可以创建一个Message。
+
+Connection：与JMS提供者建立的一个连接。可以从这个连接创建一个会话，即Session。
+
+ConnectionFactory:那如何创建一个Connection呢？这就需要下面讲到的ConnectionFactory了。通过这个工厂类就可以得到一个与JMS提供者的连接，即Conection。
+
+Producer：消息的生产者，要发送一个消息，必须通过这个生产者来发送。
+
+MessageConsumer：与生产者相对应，这是消息的消费者或接收者，通过它来接收一个消息。
+
+前面多次提到JMS提供者，因为JMS给我们提供的只是一系列接口，当我们使用一个JMS的时候，还是需要一个第三方的提供者，
+它的作用就是真正管理这些Connection，Session，Topic和Queue等。
+
+概念的关系。
+   ConnectionFactory--->Connection--->Session--->Message
+   Destination + Session--->Producer
+   Destination + Session--->MessageConsumer
+
+消息的消费 
+在JMS中，消息的产生和消息是异步的。对于消费来说，JMS的消息者可以通过两种方式来消费消息。 
+○ 同步 
+订阅者或接收者调用receive方法来接收消息，receive方法在能够接收到消息之前（或超时之前）将一直阻塞 
+○ 异步 
+订阅者或接收者可以注册为一个消息监听器。当消息到达之后，系统自动调用监听器的onMessage方法。
+
+
+关于持久订阅：在生产者发送消息后，如果消费者出现异常（未登录或者接收消息失败），在消费者与生产者通信正常后再将消息发送给消费者。
+原理：在监听适配器中配置持久订阅属性（subscriptionDurable）为true，配置clientId和durableSubscriptionName，系统中的clientId根据属性文件中的hostName属性得到，为该计算机的MAC地址。
+在第一次成功通信后，消费者即为持久订阅了，如果消费者出现异常，再连接正常后可以接收到生产者发送的消息。
+
+关于超时：如果消费者与服务器通信正常，但在规定的时间内未接收数据或接收数据的时间超过规定时间即为“超时”。若超时则消费者将不能接收到任何消息。
+在本系统中使用JMS进行表单的发送，即在集群环境下，一台服务器上传表单后使用JMS将该表单发送到其他服务器。其中，表单名称为系统自动生成已当前时间的毫秒数作为文件名。
+
+发送类型：本系统中使用MapMessage类型进行消息的发送，该MapMessage中有两个属性：fileName和msgContent。
+
+## 各类MQ比较
+http://blog.csdn.net/sunxinhere/article/details/7968886
