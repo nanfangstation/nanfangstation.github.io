@@ -1,0 +1,383 @@
+---
+layout:     post
+title:      "Java二三事"
+subtitle:   "细节之处见功底"
+date:       2017-11-30
+author:     "南方"
+header-img: "img/post-bg-room.jpg"
+catalog: true
+tags:
+    - Java
+---
+
+# 前言
+
+> 不积跬步无以至千里
+
+# goto
+
+Java语言中goto是保留关键字，没有goto语句，也没有任何使用goto关键字的地方。因为goto语句提供一种改变程序运行流程非结构化方式。这通常使程序难以理解和难于维护，也阻止某些编译器优化。但是，有些地方goto语句对于构造流程控制是有用而且是合法。
+ 
+Java中也可在特定情况下，通过特定的手段，来实现goto的功能。下面解释两个特定：
+
+1. 特定情况：只有在循环体内，比如for、while语句（含do...while语句）中。
+2. 特定手段：语句标签和循环控制关键字break、continue，语法格式是：break/continue 语句标签。
+
+使用break语句在Java中，break语句有3种作用。
+
+* 在switch语句中，它被用来终止一个语句序列。
+* 它能被用来退出一个循环。
+* 它能作为一种“先进”goto 语句来使用。
+
+**在一系列嵌套循环中使用break 语句时，它将仅仅终止最里面循环。**
+
+```
+
+@Test
+    public void breakTest() {
+        for (int i = 0; i < 3; i++) {
+            System.out.print("第" + i + "次: ");
+            for (int j = 0; j < 10; j++) {
+                if (j == i * i)
+                    break; // 仅结束break所在的循环体
+                System.out.print(j + " ");
+            }
+            System.out.println();
+        }
+        System.out.println("循环结束");
+    }
+```
+
+结果：
+```
+第0次: 
+第1次: 0 
+第2次: 0 1 2 3 
+循环结束
+```
+
+反编译情况
+
+```
+@Test
+    public void breakTest() {
+        for(int i = 0; i < 3; ++i) {
+            System.out.print("第" + i + "次: ");
+
+            for(int j = 0; j < 10 && j != i * i; ++j) {
+                System.out.print(j + " ");
+            }
+
+            System.out.println();
+        }
+
+        System.out.println("循环结束");
+    }
+```
+
+从嵌套很深循环中退出时， goto语句很有帮助。因此，Java定义break语句一种扩展形式来处理这种情况。通过使用这种形式break，你可以终止一个或者几个代码块。这些代码块不必是一个循环或一个switch语句一部分，它们可以是任何块。而且，由于这种形式break 语句带有标签，你可以明确指定执行从何处重新开始。你将看到，break带给你是goto 益处，并舍弃goto 语句带来麻烦。 
+
+语句标签的语法是-- label名:
+
+标签break 语句通用格式如下所示： break label; 这里，标签label是标识代码块标签。当这种形式break执行时，控制被传递出指定代码块。被加标签代码块必须包围break语句，但是它不需要是直接包围break块。这意味着你可以使用一个加标签break语句退出一系列嵌套块。但是你不能使用break语句将控制传递到不包含break语句代码块。 要指定一个代码块，在其开头加一个标签即可。标签（label）可以是任何合法有效Java 标识符后跟一个冒号。一旦你给一个块加上标签后，你就可以使用这个标签作为break 语句对象。这样做会使执行在加标签块结尾重新开始。
+
+```
+@Test
+    public void test() {
+        outer:
+        for (int i = 0; i < 10; i++) {
+            System.out.println("outer循环:" + i);
+            inner:
+            for (int k = 0; i < 10; k++) {
+                System.out.print(k + " ");
+                int x = new Random().nextInt(10);
+                if (x > 7) {
+                    System.out.println("inner循环结束，继续执行outer循环! x: " + x);
+                    continue outer; // 终止inner循环, 进入outer循环
+                }
+                if (x == 1) {
+                    System.out.println("跳出并结束整个outer和inner循环! x: " + x);
+                    break outer; // 终止inner和outer循环, 转而执行outer跌代体后面的代码
+                }
+            }
+        }
+        System.out.println("所有循环结束!");
+    }
+```
+结果：
+```
+outer循环:0
+0 跳出并结束整个outer和inner循环! x: 1
+所有循环结束!
+```
+
+反编译情况
+
+```
+@Test
+    public void test() {
+        label28:
+        for(int i = 0; i < 10; ++i) {
+            System.out.println("outer循环:" + i);
+
+            for(int k = 0; i < 10; ++k) {
+                System.out.print(k + " ");
+                int x = (new Random()).nextInt(10);
+                if (x > 7) {
+                    System.out.println("inner循环结束，继续执行outer循环! x: " + x);
+                    break;
+                }
+
+                if (x == 1) {
+                    System.out.println("跳出并结束整个outer和inner循环! x: " + x);
+                    break label28;
+                }
+            }
+        }
+
+        System.out.println("所有循环结束!");
+    }
+```
+
+# hash()
+
+### 1. HashCode定义
+
+Java中hashcode方法返回该对象的哈希码值。支持该方法是为哈希表提供一些优点，例如，java.util.Hashtable 提供的哈希表。
+
+在object类中，hashCode定义如下：
+
+public native int hashCode();
+ 说明是一个本地方法，它的实现是根据本地机器相关的。当然我们可以在自己写的类中覆盖hashcode()方法，比如String、Integer、Double等这些类都是覆盖了hashcode()方法的。例如在String类中定义的hashcode()方法如下：
+ 
+```
+public int hashCode() {  
+    int h = hash;  
+    if (h == 0) {  
+        int off = offset;  
+        char val[] = value;  
+        int len = count;  
+  
+        for (int i = 0; i < len; i++) {  
+            h = 31 * h + val[off++];  
+        }  
+        hash = h;  
+    }  
+    return h;  
+}  
+```   
+  
+### 2. hashCode常规协定
+
+在 Java 应用程序执行期间，在同一对象上多次调用 hashCode 方法时，必须一致地返回相同的整数，前提是对象上 equals 比较中所用的信息没有被修改。从某一应用程序的一次执行到同一应用程序的另一次执行，该整数无需保持一致。 
+
+如果根据 equals(Object) 方法，两个对象是相等的，那么在两个对象中的每个对象上调用 hashCode 方法都必须生成相同的整数结果。   
+
+以下情况不是必需的：如果根据 equals(java.lang.Object) 方法，两个对象不相等，那么在两个对象中的任一对象上调用 hashCode 方法必定会生成不同的整数结果。但是，程序员应该知道，为不相等的对象生成不同整数结果可以提高哈希表的性能。   
+实际上，由 Object 类定义的 hashCode 方法确实会针对不同的对象返回不同的整数。（这一般是通过将该对象的内部地址转换成一个整数来实现的，但是 JavaTM 编程语言不需要这种实现技巧。）   
+  
+当equals方法被重写时，通常有必要重写 hashCode 方法，以维护 hashCode 方法的常规协定，该协定声明相等对象必须具有相等的哈希码。
+
+通过重写 equals 方法，你将申明一些对象与其他对象相等，但是原始的 hashCode 方法将所有的对象看做是不同的。所以你将会有不同哈希码的相同对象。例如，在 HashMap 中调用 contains 方法将会返回 false，即使这个对象已经被添加。  
+
+* **没有重写equal**
+
+```
+public class HashTest {
+    private int num;
+
+    public int getNum() {
+        return num;
+    }
+
+    public void setNum(int num) {
+        this.num = num;
+    }
+
+//    public boolean equals(Object object) {
+//        if (object == null) {
+//            return false;
+//        }
+//        if (object == this) {
+//            return true;
+//        }
+//        if (!(object instanceof HashTest)) {
+//            return false;
+//        }
+//        HashTest other = (HashTest) object;
+//        if (other.getNum() == this.getNum()) {
+//            return true;
+//        }
+//        return false;
+//    }
+
+    public int hashCode() {
+        return num % 10;
+    }
+
+    public static void main(String[] args) {
+        HashTest a = new HashTest();
+        HashTest b = new HashTest();
+        a.setNum(1);
+        b.setNum(1);
+        Set<HashTest> set = new HashSet<HashTest>();
+        set.add(a);
+        set.add(b);
+        System.out.println(a.hashCode() == b.hashCode());
+        System.out.println(a.equals(b));
+        System.out.println(set);
+    }
+}
+```
+
+结果：
+```
+true
+false
+[hash.HashTest@1, hash.HashTest@1]
+```
+
+* **重写equal**
+
+结果：
+```
+true
+true
+[hash.HashTest@1]
+```
+
+以上这个示例，只是重写了hashCode方法，从上面的结果可以看出，虽然两个对象的hashCode相等，但是实际上两个对象并不是相等；如果没有重写equals方法，那么就会调用object默认的equals方法，是比较两个对象的引用是不是相同，显示这是两个不同的对象，两个对象的引用肯定是不等的。这里我们将生成的对象放到了HashSet中，而HashSet中只能够存放唯一的对象，也就是相同的（适用于equals方法）的对象只会存放一个，但是这里实际上是两个对象a,b都被放到了HashSet中，这样HashSet就失去了他本身的意义了。
+
+## 修改IntegerCache/ByteCache
+
+在Java中，每次创建对象都要进行内存分配操作，为了减少频繁地创建对象，许多地方采用池来存放对象，如String中的字符串池，对于基本类型，对应的包装类中皆有缓存来避免频繁创建对象，如Integer中的静态内部类IntegerCache
+
+```
+@Test
+    public void test() throws Exception {
+        //通过反射获取类
+        Class < ? > clazz = Class.forName(
+            "java.lang.Integer$IntegerCache");
+
+        //获取cache成员变量
+        Field field = clazz.getDeclaredField("cache");
+        field.setAccessible(true);
+        Integer[] cache = (Integer[]) field.get(clazz);
+
+        // 重写Integer cache
+        for (int i = 0; i < cache.length; i++) {
+            cache[i] = new Integer(
+                new Random().nextInt(cache.length));
+        }
+
+        // 证明
+        for (int i = 0; i < 10; i++) {
+            System.out.println((Integer) i);
+        }
+    }
+```
+
+
+
+# enum.valueOf
+
+如果没有找到该枚举，会出现什么错误?
+
+```
+public static <T extends Enum<T>> T valueOf(Class<T> enumType,
+                                                String name) {
+        //通过反射，从常量列表中查找
+        T result = enumType.enumConstantDirectory().get(name);
+        if (result != null)
+            return result;
+        if (name == null)
+            throw new NullPointerException("Name is null");
+        //最后抛无效参数异常
+        throw new IllegalArgumentException(
+            "No enum constant " + enumType.getCanonicalName() + "." + name);
+    }
+```
+
+valudOf方法通过反射从枚举类的常量声明中查找，若找到就直接返回，若找不到则抛出无效参数异常。valueOf的本意是保护编码的枚举安全性，使其不产生空枚举对象，简化枚举操作，但是却又引入了一个我们无法避免的IllegalArgumentException异常。 
+
+```
+@Test
+    public void testEnum() {
+        //注意summer是小写
+        List<String> params = Arrays.asList("Spring","summer");
+        for(String name:params){
+            //查找字面值与name相同的枚举项
+            Season s = Season.valueOf(name);
+            if(s != null){
+                //有枚举项时
+                System.out.println(s);
+            }else{
+                //没有枚举项
+                System.out.println("没有相关枚举项");
+            }
+        }
+    }
+```
+
+结果：
+```
+Spring
+
+java.lang.IllegalArgumentException: No enum constant integercache.Season.summer
+```
+
+分析：
+summer无法转换Season枚举，根据上面的分析，就会抛出IllegalArgumentException异常，一旦抛出异常，后续的代码就不运行了！ 这与我们的习惯很不一致，例如我们从一个List中查找一个元素，即使不存在也不会报错，顶多返回indexOf方法返回-1。
+
+**建议**
+
+* try catch捕捉
+
+```
+try{   
+    Season s = Season.valueOf(name);   
+    //有该枚举项时处理   
+    System.out.println("s");   
+}catch(Exception e){   
+    System.out.println("无相关枚举项");   
+}   
+```
+
+* 扩展枚举类 
+
+由于Enum类定义的方法都是final类型的，所以不希望被覆写，我们可以通过增加一个contains方法来判断是否包含指定的枚举项，然后在继续转换，代码如下
+
+```
+enum Season{   
+    Spring,Summer,Autumn,Winter;   
+   
+    //是否包含枚举项   
+    public static boolean contains(String name){   
+        //所有的枚举值   
+        Season[] season = values();   
+       //遍历查找   
+       for(Season s : season){   
+           if(s.name().equals(name)){   
+               return true;   
+           }   
+       }   
+   
+       return false;   
+    }   
+}   
+```
+
+### 参考文档
+
+[java循环控制中break、continue、return的区别](http://www.cnblogs.com/lffsonic/articles/1829130.html)
+
+[Java中的"goto"实现](http://blog.51cto.com/lavasoft/178997)
+
+[Java中hashCode的作用](http://blog.csdn.net/fenglibing/article/details/8905007)
+
+[Java提高篇——equals()与hashCode()方法详解](http://www.cnblogs.com/Qian123/p/5703507.html)
+
+[理解Java Integer的缓存策略](http://www.importnew.com/18884.html)
+
+[在 Java 9 里对 IntegerCache 进行修改](http://www.ctolib.com/topics-116552.html)
+
