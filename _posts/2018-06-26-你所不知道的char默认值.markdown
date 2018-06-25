@@ -1,0 +1,78 @@
+---
+layout:     post
+title:      "你所不知道的char默认值"
+subtitle:   "毋意，毋必，毋固，毋我。"
+date:       2018-06-26
+author:     "南方"
+header-img: "img/post-bg-moon.jpg"
+catalog: true
+tags:
+    - Java
+---
+
+# 前言
+
+> 子绝四：毋意，毋必，毋固，毋我。主观臆断、武断绝对、拘泥固执、自以为是，这四点也是我们每个有独立思想的人应该避免的思维缺陷。
+
+我们知道Java基本数据类型有8种，按所占存储空间从小到大依次说出Java基本数据类型，你能脱口而出吗？
+
+额，卡壳了。
+
+序号 | 数据类型|大小|默认值
+---|---|---|---
+1 | byte|8bit|(byte)0
+2|char|16bit|`'\u0000'`|
+3|short|16bit|(short)0|
+4|int|32bit|0|
+5|float|32bit|0.0f|
+6|long|64bit|0l|
+7|double|64bit|0.0d|
+8|boolean|-|false|
+
+> For type char, the default value is the null character, that is, '\u0000'.
+
+无意间注意到char的默认值为`'\u0000'`--4位十六进制数据所表示的字符。
+我们知道Java使用的是Unicode字符吗系统，查Unicode字符列表，发现它代表空字符NUL。
+
+那么(`'\u0000'` = 0 = null character) = null?
+
+# show me the code.
+
+```Java
+public class PrimitiveType {
+
+    char c;
+
+    @Test
+    public void testChar() {
+        PrimitiveType t = new PrimitiveType();
+        char c1 = '\u0000';
+        char c2 = '\0';
+        char c3 = '\u2400';
+        System.out.println("c1: " + c1);
+        System.out.println("c2: " + c2);
+        System.out.println("c3: " + c3);
+        System.out.println("c: " + c);
+        System.out.println("c1==c: " + (c1 == t.c));
+        System.out.println("c1==c2: " + (c1 == c2));
+        System.out.println("c1==c3: " + (c1 == c3));
+    }
+}
+```
+
+# 结果
+
+![image](https://raw.githubusercontent.com/nanfangstation/image/master/blog/20180626_char_default.png)
+
+
+char默认值`'\u0000'`不是一个可打印字符，和Java的null并不等同，仅代表Unicode编码中的空字符。
+
+# 参考
+
+[Initial Values of Variables](https://docs.oracle.com/javase/specs/jls/se7/html/jls-4.html#jls-4.12.5)
+
+
+[what's the default value of char?](https://stackoverflow.com/questions/9909333/whats-the-default-value-of-char)
+
+[空字符](https://zh.wikipedia.org/wiki/%E7%A9%BA%E5%AD%97%E7%AC%A6)
+
