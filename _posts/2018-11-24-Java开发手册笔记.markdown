@@ -1,0 +1,147 @@
+---
+layout:     post
+title:      "Java开发手册笔记"
+subtitle:   "What doesn't kill you makes you stronger"
+date:       2018-11-24
+author:     "方南"
+header-img: "img/post-bg-mooncrab.jpg"
+catalog: true
+tags:
+    - Java
+---
+
+## 编程规约
+
+#### 命令风格
+
+###### Service/DAO层
+
+- 获取单个对象 getXXX
+- 获取多个对象 listXXX
+- 获取统计值 countXXX
+- 插入 saveXXX/insertXXX
+- 删除 removeXXX/deleteXXX
+- 修改 updateXXX
+
+###### 包装类型与基本类型
+
+POJO类属性都使用包装类型，局部变量推荐使用基本类型
+
+#### 并发处理
+
+###### 资源驱动类、工具类、单例工厂类需要保证线程安全
+
+###### 线程池不允许使用Executors创建，而是ThreadPoolExecutor方式创建
+
+###### SimpleDateFormat线程不安全
+ 
+###### ThreadLocal使用try finally回收，使用static修饰，无法解决共享对象的更新问题
+
+#### 控制语句
+
+###### 超过3层的if else逻辑判断代码可以使用卫语句、策略模式、状态模式来实现
+
+#### 其他
+
+###### 正则表达式
+
+Pattern pettern = Pattern.compile();
+
+正则表达式预编译功能，不要在方法体内编译
+
+## 单元测试
+
+###### AIR
+
+- A:Automatic 自动化
+- I:Independent 独立性
+- R:Repeatable 可重复
+
+###### BCDE确保交付质量
+
+- B:Border 边界值测试，包括循环边界、特殊取值、特殊时间点、数据顺序等
+- C:Correct 正确的输入并得到预期的结果
+- D:Design 与设计文档相结合来编写单元测试
+- E:Error 强制错误信息输入（如非法数据、异常流程、非业务允许数据输入等）并得到预期结果
+
+## 安全规约
+
+###### 在使用平台资源时，如短信、邮件、电话、下单、支付，必须实现正确的防重放机制、疲劳度控制、验证码校验，避免被滥刷、资损
+
+## MySQL
+
+#### 建表规约
+
+###### 表达是否概念的字段，必须使用is_xxx命名，数据类型unsigned tinyint(1是0否)
+###### 禁用保留字如desc/range/match/delayed等
+###### 主键索引名pk_xxx，唯一索引uk_xxx，普通索引名idx_xxx
+###### 小数类型为decimal，禁用float、double（损失精度）
+###### 如果存储字符串长度几乎相等使用char定义定长字符串类型，varchar是可变字符串，不预先分配存储空间，长度不超过5000个字符，若超出定义为text
+###### 必备字段id/gmt_create(unsigned bigint)/gmt_modified(date_time)
+###### 当单表行数超过500万或者单表容量超过2GB时才推荐分库分表(如果预计三年后数据量无法达到这个级别，不要在创建表时分库分表)
+
+#### 索引规约
+###### 业务上具有唯一特性的字段，即使多个字段的组合也必须有唯一索引
+###### 超过三个表禁止join，需要join的字段的数据类型必须绝对一致，关联查询的字段需要有索引
+###### varchar字段建立索引时必须指定索引长度，没必要全字段索引
+###### SQL性能优化的目标：至少达到range级别，要求是ref级别，最好是consts
+- consts 单表中最多只有一个匹配行(主键或者唯一索引)，在优化阶段即可读取到数据
+- ref 指的是使用普通的索引(normal index)
+- range 对索引进行范围检索
+组建索引的时候区分度最高的在最左边
+
+#### SQL语句
+###### count(*)会统计值为NULL的行，而count(列名)不会统计列为NULL值的行
+
+###### count(distinct column)计算该列除NULL外的不重复行数，count(distinct column1, column2)如果其中一列全为NULL，那么即使另一列有不同的值也返回0
+###### 当某一列的值全为NULL时，count(column)返回0，但sum(column)返回NULL
+###### 使用ISNULL()来判断是否为NULL值
+NULL与任何值的比较都是NULL
+
+- NULL<>NULL 返回NULL而不是false
+- NULL=NULL 返回NULL 而不是true
+- NULL<>1 返回NULL而不是true
+
+###### 数据订正(特别是删除、修改操作记录)时要先select再操作
+###### in操作尽量避免，尽量控制在1000个元素之内
+###### 如果需要存储表情，选择utf8mb4进行存储
+
+
+#### ORM映射
+###### xml配置参数使用#{}，不要使用${}防止SQL注入
+###### @Transactional 事务会影响数据库的QPS，使用时需要考虑各方面的回滚方案包括缓存回滚、搜索引擎回滚、消息补偿、统计修正等
+
+## 工程结构
+#### 二方库依赖
+###### GAV
+- GroupId:com.{公司/BU}.业务线.[子业务线]
+- ArtifactId:产品线名-模块名
+- Version:主版本号.次版本号.修订版本号
+	- 主版本号:产品方向改变或者大规模API不兼容或者架构不兼容升级
+	- 次版本号:保持相对兼容性，增加主要功能特性，影响范围极小的API不兼容修改
+	- 修订版本号:保持完全兼容性，修复bug、新增次要功能特性
+
+起始版本号必须为1.0.0
+
+###### 线上应用不要依赖SNAPSHOT(安全包除外)，保证应用发布的幂等性，也可以加快编译时的打包构建
+###### 二方库的新增或升级，保持除功能点之外的其他jar包仲裁结果不变。如果有改变，必须明确评估和验证，建议进行dependency:resolve前后信息对比；如果仲裁结果完全不一致，则通过dependency:tree命令找出差异点，进行<excludes>排除jar包
+###### 二方库里可以定义枚举类型，参数可以使用枚举类型，但是接口返回值不允许使用枚举类型或者包含枚举类型的POJO对象
+###### 对于已经提供工具类二方库的不要再编程实现
+- JSON操作:fastjson
+- MD5操作:commons-codec
+- 工具集合:Guava包
+- 数组操作:ArrayUtils(org.apache.commons.lang3)
+- 集合操作:CollectionUtils(org.apache.commons.collections4)
+
+## 设计
+
+#### 系统设计
+系统设计的主要目的是明确需求、理顺逻辑、后期维护，次要目的是用于指导编码
+
+设计的本质是识别和表达系统难点，并找到系统的变化点并隔离变化点
+
+系统架构设计的目的
+- 确定系统边界。确定系统在技术层面的做与不做
+- 确定系统内模块之间的关系。确定模块之间的依赖关系及模块的宏观输入与输出
+- 确定指导后续设计与演化的原则。使后续的子系统或模块设计在一个规定的框架内继续演化
+- 确定非功能性需求。非功能性需求是指安全性、可靠性、可维护性、可扩展性。
