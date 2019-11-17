@@ -1,0 +1,107 @@
+---
+layout:     post
+title:      "分布式系统学习"
+subtitle:   "15-440"
+date:       2019-11-18
+author:     "Lydia"
+header-img: "img/post-bg-golden_gate.jpeg"
+catalog: true
+tags:
+    - 分布式
+---
+
+## Objectives
+* 构建并实现分布式系统程序。 
+* 使用定义明确的协议编写可交互的程序。
+* 调试高并发代码，这些代码跨越在多个内核和机器上运行的多个程序。 
+* 学习用于锁、同步、并发、调度和复制的分布式算法的原理。 
+* 使用标准的网络通信原语，例如UDP和TCP。 
+* 了解集群和Internet上的分布式系统编程所需的网络通信的一般属性。 
+* 采用并创建通用范例来简化分布式系统编程的任务，例如分布式文件系统、RPC和MapReduce。能够清楚地阐明它们的优点、缺点和局限性。 
+* 确定分布式系统程序面临的安全挑战。 
+* 能够选择适当的安全解决方案来满足常见的分布式编程方案的需求。
+
+## Syllabus
+    
+### 引言
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/01-intro.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/01-intro.pdf)
+### 分布式系统与网络
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/02-network1.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/02-network1.pdf)
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/03-network2.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/03-network2.pdf)
+### 并发
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/05-concurrency.txt](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/05-concurrency.txt)
+### RPC
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/06-rpc.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/06-rpc.pdf)
+### 分布式文件系统
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/07-dfs1.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/07-dfs1.pdf)
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/08-dfs2.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/08-dfs2.pdf)
+### 时间同步
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/09-time.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/09-time.pdf)
+### 分布式互斥
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/10-mutual-exclusion.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/10-mutual-exclusion.pdf)
+### 容错-检测和纠正本地故障
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/11-errors.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/11-errors.pdf)
+### 并发控制
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/12-concurrency.txt](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/12-concurrency.txt)
+### RAID
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/13-RAID.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/13-RAID.pdf)
+### 日志和崩溃恢复
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/14-recovery.txt](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/14-recovery.txt)
+### 一致性哈希和按哈希命名
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/15-hashing.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/15-hashing.pdf)
+### 分布式复制
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/16-replication.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/16-replication.pdf)
+### 数据密集型计算和MapReduce / Hadoop
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/17-mapreduce.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/17-mapreduce.pdf)
+[http://static.googleusercontent.com/media/research.google.com/zh-CN//archive/mapreduce-osdi04.pdf](http://static.googleusercontent.com/media/research.google.com/zh-CN//archive/mapreduce-osdi04.pdf)
+### MapReduce / HDFS的分布式文件系统
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/18-hdfs-gfs.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/18-hdfs-gfs.pdf)   [http://static.googleusercontent.com/media/research.google.com/zh-CN//archive/gfs-sosp2003.pdf](http://static.googleusercontent.com/media/research.google.com/zh-CN//archive/gfs-sosp2003.pdf)
+[http://queue.acm.org/detail.cfm?id=1594206](http://queue.acm.org/detail.cfm?id=1594206)
+### DNS和内容交付网络
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/20-DNS-CDN.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/20-DNS-CDN.pdf)
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/21-dns-script.txt](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/21-dns-script.txt)
+### 点对点
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/21-p2p.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/21-p2p.pdf)
+### 虚拟机
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/24-vm.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/24-vm.pdf)
+### 拜占庭容错
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/bft.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/bft.pdf)
+[http://video.mit.edu/watch/practical-byzantine-fault-tolerance-9388/](http://video.mit.edu/watch/practical-byzantine-fault-tolerance-9388/)
+### 安全协议
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/24-security1.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/24-security1.pdf)
+
+* Needham-Schroeder_protocol
+* Diffie-Hellman
+
+### 案例研究-匿名路由和TOR
+[http://www.cs.cmu.edu/~dga/15-440/S14/lectures/25-security2.pdf](http://www.cs.cmu.edu/~dga/15-440/S14/lectures/25-security2.pdf)
+        [https://svn.torproject.org/svn/projects/design-paper/tor-design.pdf](https://svn.torproject.org/svn/projects/design-paper/tor-design.pdf)
+        [http://freehaven.net/~arma/slides-toorcon05.pdf](http://freehaven.net/~arma/slides-toorcon05.pdf)
+
+## Assignments
+
+1. 实现多客户端Echo服务器
+[https://github.com/cmu440/p0](https://github.com/cmu440/p0)
+
+2. 分布式比特币矿工
+[https://github.com/cmu440/p1](https://github.com/cmu440/p1)
+
+3. Tribbler
+[https://github.com/cmu440/p2](https://github.com/cmu440/p2)
+
+4. 设计分布式系统
+
+## Supplemental
+
+*     Distributed Systems: Principles and Paradigms
+*     [http://www.cs.cmu.edu/~dga/systems-se.pdf](http://www.cs.cmu.edu/~dga/systems-se.pdf)
+*     Computer Networks: A Systems Approach, fourth edition, by Larry Peterson and Bruce Davie.
+*     Operating Systems Concepts seventh edition, by Silberschatz, Galvin and Gagne
+*     For the projects, please see Dave's Notes on Software Engineering for Systems Hackers.
+*     For programming, see Unix Network Programming: Networking APIs: Sockets and XTI (Volume 1) by W. Richard Stevens.
+*     Advanced Programming in the Unix Environment by W. Richard Stevens, Addison-Wesley, 1993.
+
+## Links
+[http://www.cs.cmu.edu/~dga/15-440/S14/](http://www.cs.cmu.edu/~dga/15-440/S14/)
+
+> 未完待续
