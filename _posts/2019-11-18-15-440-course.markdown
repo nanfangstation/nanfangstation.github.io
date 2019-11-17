@@ -4,7 +4,7 @@ title:      "分布式系统学习"
 subtitle:   "15-440"
 date:       2019-11-18
 author:     "Lydia"
-header-img: "img/post-bg-golden_gate.jpeg"
+header-img: "img/post-bg-golden_gate.jpg"
 catalog: true
 tags:
     - 分布式
