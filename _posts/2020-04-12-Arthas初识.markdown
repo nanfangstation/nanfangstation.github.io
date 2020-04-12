@@ -4,7 +4,7 @@ title:      "Arthas初识"
 subtitle:   "纸上得来终觉浅，绝知此事要躬行"
 date:       2020-04-12
 author:     "Lydia"
-header-img: "img/post-bg-arthas.jpeg"
+header-img: "img/post-bg-arthas.png"
 catalog: true
 tags:
     - Java
