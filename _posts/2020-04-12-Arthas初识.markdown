@@ -1,0 +1,264 @@
+---
+layout:     post
+title:      "Arthas初识"
+subtitle:   "纸上得来终觉浅，绝知此事要躬行"
+date:       2020-04-12
+author:     "Lydia"
+header-img: "img/post-bg-arthas.png"
+catalog: true
+tags:
+    - Java
+---
+
+# 背景
+最近被问到一个问题：==如何看某一个类的性能？==
+
+当时一紧张只想起有火焰图这个概念，却不知还有强大的线上诊断工具Arthas。
+
+纸上得来终觉浅，绝知此事要躬行。
+
+# 实战
+
+[官方文档](https://arthas.gitee.io/)
+
+### 启动demo
+```
+curl -O https://alibaba.github.io/arthas/arthas-demo.jar
+java -jar arthas-demo.jar
+```
+arthas-demo是一个简单的程序，每隔一秒生成一个随机数，再执行质因数分解，并打印出分解结果。
+
+### 下载安装
+```
+wget https://alibaba.github.io/arthas/arthas-boot.jar
+```
+安装结果
+```
+bash-3.2$ wget https://alibaba.github.io/arthas/arthas-boot.jar
+--2020-04-12 17:13:51--  https://alibaba.github.io/arthas/arthas-boot.jar
+正在解析主机 alibaba.github.io (alibaba.github.io)... 185.199.109.153, 185.199.110.153, 185.199.111.153, ...
+正在连接 alibaba.github.io (alibaba.github.io)|185.199.109.153|:443... 失败：Operation timed out。
+正在连接 alibaba.github.io (alibaba.github.io)|185.199.110.153|:443... 已连接。
+已发出 HTTP 请求，正在等待回应... 200 OK
+长度：112288 (110K) [application/java-archive]
+正在保存至: “arthas-boot.jar”
+
+arthas-boot.jar                               100%[==============================================================================================>] 109.66K  21.8KB/s  用时 5.0s
+
+2020-04-12 17:15:18 (21.8 KB/s) - 已保存 “arthas-boot.jar” [112288/112288])
+```
+
+### 启动Arthas
+```
+java -jar arthas-boot.jar
+```
+启动结果
+```
+bash-3.2$ java -jar arthas-boot.jar
+[INFO] arthas-boot version: 3.2.0
+[INFO] Found existing java process, please choose one and input the serial number of the process, eg : 1. Then hit ENTER.
+* [1]: 20768 arthas-demo.jar
+  [2]: 20791
+  [3]: 20807 org.jetbrains.jps.cmdline.Launcher
+  [4]: 20814 org.jetbrains.idea.maven.server.RemoteMavenServer36
+1
+[INFO] Start download arthas from remote server: https://maven.aliyun.com/repository/public/com/taobao/arthas/arthas-packaging/3.2.0/arthas-packaging-3.2.0-bin.zip
+[INFO] File size: 10.82 MB, downloaded size: 423.37 KB, downloading ...
+[INFO] File size: 10.82 MB, downloaded size: 1.19 MB, downloading ...
+[INFO] File size: 10.82 MB, downloaded size: 1.81 MB, downloading ...
+[INFO] File size: 10.82 MB, downloaded size: 2.71 MB, downloading ...
+[INFO] File size: 10.82 MB, downloaded size: 3.76 MB, downloading ...
+[INFO] File size: 10.82 MB, downloaded size: 4.88 MB, downloading ...
+[INFO] File size: 10.82 MB, downloaded size: 6.04 MB, downloading ...
+[INFO] File size: 10.82 MB, downloaded size: 7.32 MB, downloading ...
+[INFO] File size: 10.82 MB, downloaded size: 8.52 MB, downloading ...
+[INFO] File size: 10.82 MB, downloaded size: 10.02 MB, downloading ...
+[INFO] Download arthas success.
+[INFO] arthas home: /Users/XXX/.arthas/lib/3.2.0/arthas
+[INFO] Try to attach process 20768
+[INFO] Attach process 20768 success.
+[INFO] arthas-client connect 127.0.0.1 3658
+  ,---.  ,------. ,--------.,--.  ,--.  ,---.   ,---.
+ /  O  \ |  .--. ''--.  .--'|  '--'  | /  O  \ '   .-'
+|  .-.  ||  '--'.'   |  |   |  .--.  ||  .-.  |`.  `-.
+|  | |  ||  |\  \    |  |   |  |  |  ||  | |  |.-'    |
+`--' `--'`--' '--'   `--'   `--'  `--'`--' `--'`-----'
+
+
+wiki      https://alibaba.github.io/arthas
+tutorials https://alibaba.github.io/arthas/arthas-tutorials
+version   3.2.0
+pid       20768
+time      2020-04-12 17:34:38
+```
+
+### dashboard
+
+```
+[arthas@20768]$ dashboard
+ID         NAME                           GROUP                 PRIORITY  STATE      %CPU      TIME       INTERRUPT DAEMON
+30         Timer-for-arthas-dashboard-de4 system                10        RUNNABLE   100       0:0        false     true
+11         Attach Listener                system                9         RUNNABLE   0         0:0        false     true
+10         Common-Cleaner                 InnocuousThreadGroup  8         TIMED_WAIT 0         0:0        false     true
+3          Finalizer                      system                8         WAITING    0         0:0        false     true
+2          Reference Handler              system                10        RUNNABLE   0         0:0        false     true
+4          Signal Dispatcher              system                9         RUNNABLE   0         0:0        false     true
+16         arthas-shell-server            system                9         TIMED_WAIT 0         0:0        false     true
+29         as-command-execute-daemon      system                10        TIMED_WAIT 0         0:0        false     true
+13         job-timeout                    system                9         TIMED_WAIT 0         0:0        false     true
+1          main                           main                  5         TIMED_WAIT 0         0:0        false     false
+14         nioEventLoopGroup-2-1          system                10        RUNNABLE   0         0:0        false     false
+19         nioEventLoopGroup-2-2          system                10        RUNNABLE   0         0:0        false     false
+23         nioEventLoopGroup-2-3          system                10        RUNNABLE   0         0:0        false     false
+24         nioEventLoopGroup-2-4          system                10        RUNNABLE   0         0:0        false     false
+25         nioEventLoopGroup-2-5          system                10        RUNNABLE   0         0:0        false     false
+26         nioEventLoopGroup-2-6          system                10        RUNNABLE   0         0:0        false     false
+27         nioEventLoopGroup-2-7          system                10        RUNNABLE   0         0:0        false     false
+Memory                     used      total    max      usage    GC
+heap                       63M       130M     2048M    3.08%    gc.g1_young_generation.count    2
+g1_eden_space              52M       70M      -1       74.29%   gc.g1_young_generation.time(ms) 30
+g1_old_gen                 1M        50M      2048M    0.06%    gc.g1_old_generation.count      0
+g1_survivor_space          10M       10M      -1       100.00%  gc.g1_old_generation.time(ms)   0
+nonheap                    24M       28M      -1       85.73%
+codeheap_'non-nmethods'    1M        2M       5M       20.44%
+metaspace                  16M       17M      -1       95.36%
+
+Runtime
+os.name                                                         Mac OS X
+os.version                                                      10.15.3
+java.version                                                    12.0.2
+java.home                                                       /Library/Java/JavaVirtualMachines/jdk-12.0.2.jdk/Contents/Home
+systemload.average                                              2.96
+processors                                                      4
+uptime                                                          3282s
+```
+
+### thread
+```
+[arthas@20768]$ thread
+Threads Total: 13, NEW: 0, RUNNABLE: 7, BLOCKED: 0, WAITING: 2, TIMED_WAITING: 4, TERMINATED: 0
+ID         NAME                           GROUP                 PRIORITY  STATE      %CPU      TIME       INTERRUPT DAEMON
+20         as-command-execute-daemon      system                10        RUNNABLE   100       0:0        false     true
+11         Attach Listener                system                9         RUNNABLE   0         0:0        false     true
+10         Common-Cleaner                 InnocuousThreadGroup  8         TIMED_WAIT 0         0:0        false     true
+3          Finalizer                      system                8         WAITING    0         0:0        false     true
+2          Reference Handler              system                10        RUNNABLE   0         0:0        false     true
+4          Signal Dispatcher              system                9         RUNNABLE   0         0:0        false     true
+16         arthas-shell-server            system                9         TIMED_WAIT 0         0:0        false     true
+13         job-timeout                    system                9         TIMED_WAIT 0         0:0        false     true
+1          main                           main                  5         TIMED_WAIT 0         0:0        false     false
+14         nioEventLoopGroup-2-1          system                10        RUNNABLE   0         0:0        false     false
+19         nioEventLoopGroup-2-2          system                10        RUNNABLE   0         0:0        false     false
+15         nioEventLoopGroup-3-1          system                10        RUNNABLE   0         0:0        false     false
+17         pool-1-thread-1                system                5         WAITING    0         0:0        false     false
+Affect(row-cnt:0) cost in 123 ms.
+```
+
+```
+[arthas@20768]$ thread 1
+"main" Id=1 TIMED_WAITING
+    at java.base@12.0.2/java.lang.Thread.sleep(Native Method)
+    at java.base@12.0.2/java.lang.Thread.sleep(Thread.java:340)
+    at java.base@12.0.2/java.util.concurrent.TimeUnit.sleep(TimeUnit.java:446)
+    at app//demo.MathGame.main(MathGame.java:17)
+
+Affect(row-cnt:0) cost in 31 ms.
+```
+
+### jvm
+```
+[arthas@20768]$ jvm
+ RUNTIME
+-------------------------------------------------------------------------------------------------------------------------------
+ MACHINE-NAME                        20768@PengdeMacBook-Pro.local
+ JVM-START-TIME                      2020-04-12 16:54:03
+ MANAGEMENT-SPEC-VERSION             2.0
+ SPEC-NAME                           Java Virtual Machine Specification
+ SPEC-VENDOR                         Oracle Corporation
+ SPEC-VERSION                        12
+ VM-NAME                             Java HotSpot(TM) 64-Bit Server VM
+ VM-VENDOR                           Oracle Corporation
+ VM-VERSION                          12.0.2+10
+ INPUT-ARGUMENTS                     []
+ CLASS-PATH                          arthas-demo.jar
+ BOOT-CLASS-PATH
+ LIBRARY-PATH                        /Users/XXX/Library/Java/Extensions:/Library/Java/Extensions:/Network/Library/Java
+                                     /Extensions:/System/Library/Java/Extensions:/usr/lib/java:.
+
+-------------------------------------------------------------------------------------------------------------------------------
+ CLASS-LOADING
+-------------------------------------------------------------------------------------------------------------------------------
+ LOADED-CLASS-COUNT                  3030
+ TOTAL-LOADED-CLASS-COUNT            3030
+ UNLOADED-CLASS-COUNT                0
+ IS-VERBOSE                          false
+
+-------------------------------------------------------------------------------------------------------------------------------
+ COMPILATION
+-------------------------------------------------------------------------------------------------------------------------------
+ NAME                                HotSpot 64-Bit Tiered Compilers
+ TOTAL-COMPILE-TIME                  4111(ms)
+
+-------------------------------------------------------------------------------------------------------------------------------
+ GARBAGE-COLLECTORS
+-------------------------------------------------------------------------------------------------------------------------------
+ G1 Young Generation                 2/30(ms)
+ [count/time]
+ G1 Old Generation                   0/0(ms)
+ [count/time]
+
+-------------------------------------------------------------------------------------------------------------------------------
+ MEMORY-MANAGERS
+-------------------------------------------------------------------------------------------------------------------------------
+ CodeCacheManager                    CodeHeap 'non-nmethods'
+                                     CodeHeap 'profiled nmethods'
+                                     CodeHeap 'non-profiled nmethods'
+
+ Metaspace Manager                   Metaspace
+                                     Compressed Class Space
+
+ G1 Young Generation                 G1 Eden Space
+                                     G1 Survivor Space
+                                     G1 Old Gen
+
+ G1 Old Generation                   G1 Eden Space
+                                     G1 Survivor Space
+                                     G1 Old Gen
+
+
+-------------------------------------------------------------------------------------------------------------------------------
+ MEMORY
+-------------------------------------------------------------------------------------------------------------------------------
+ HEAP-MEMORY-USAGE                   136314880(130.0 MiB)/134217728(128.0 MiB)/2147483648(2.0 GiB)/45232224(43.1 MiB)
+ [committed/init/max/used]
+ NO-HEAP-MEMORY-USAGE                24444928(23.3 MiB)/7667712(7.3 MiB)/-1(-1 B)/20339320(19.4 MiB)
+ [committed/init/max/used]
+ PENDING-FINALIZE-COUNT              0
+
+-------------------------------------------------------------------------------------------------------------------------------
+ OPERATING-SYSTEM
+-------------------------------------------------------------------------------------------------------------------------------
+ OS                                  Mac OS X
+ ARCH                                x86_64
+ PROCESSORS-COUNT                    4
+ LOAD-AVERAGE                        2.65380859375
+ VERSION                             10.15.3
+
+-------------------------------------------------------------------------------------------------------------------------------
+ THREAD
+-------------------------------------------------------------------------------------------------------------------------------
+ COUNT                               13
+ DAEMON-COUNT                        8
+ PEAK-COUNT                          13
+ STARTED-COUNT                       16
+ DEADLOCK-COUNT                      0
+
+-------------------------------------------------------------------------------------------------------------------------------
+ FILE-DESCRIPTOR
+-------------------------------------------------------------------------------------------------------------------------------
+ MAX-FILE-DESCRIPTOR-COUNT           -1
+ OPEN-FILE-DESCRIPTOR-COUNT          -1
+Affect(row-cnt:0) cost in 243 ms.
+```
+
+# 调研
