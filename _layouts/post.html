@@ -23,6 +23,8 @@ layout: default
     {% endif %}
 </style>
 <header class="intro-header" >
+    <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+    <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
     <div class="header-mask"></div>
     <div class="container">
         <div class="row">
@@ -95,6 +97,23 @@ layout: default
                 <div id="cloud-tie-wrapper" class="cloud-tie-wrapper"></div>
                 <!-- 网易云跟帖 评论框 end -->
                 {% endif %}
+                <!-- Gitalk 评论框 start -->
+                <div class="comment">
+                <div id="gitalk-container"></div>
+                <script>
+                    var gitalk = new Gitalk({
+                        clientID: '0aeaf2128a5aa42cfe00',
+                        clientSecret: '17fea32e63c76873a3eca3d7959b2e15feed3e3c',
+                        repo: 'GitHub repo',
+                        owner: 'GitHub repo owner',
+                        admin: ['GitHub repo owner and collaborators, only these guys can initialize github issues'],
+                        id: location.pathname,      // Ensure uniqueness and length less than 50
+                        distractionFreeMode: false  // Facebook-like distraction free mode
+                    })
+                    gitalk.render('gitalk-container')
+                </script>
+                </div>
+                <!-- Gitalk 评论框 end -->
             </div>  
 
     <!-- Side Catalog Container -->
