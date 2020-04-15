@@ -59,8 +59,8 @@ duoshuo_share: false                     # set to false if you want to use Comme
 # Gittalk settings
 Gitalk_clientID: 0aeaf2128a5aa42cfe00
 Gitalk_clientSecret: 17fea32e63c76873a3eca3d7959b2e15feed3e3c
-Gitalk_repo: nanfangstation
-Gitalk_owner: Lydia
+Gitalk_repo: nanfangstation.github.io
+Gitalk_owner: nanfangstation
 
 
 # Analytics settings
