@@ -16,7 +16,8 @@ tags:
 
 >  从 `2.0.5` 版本开始，dubbo 开始支持通过 telnet 命令来进行服务治理。
 
-```telnet localhost 20880
+```
+telnet localhost 20880
 Trying localhost...
 Connected to localhost.
 Escape character is '^]'.
@@ -61,10 +62,10 @@ ps 20880
 
 2. ps -l 显示服务地址列表
 
-   ```
+```
    dubbo>ps -l
    dubbo://IP1:20880
-   ```
+```
 
 3. ps 20880 显示端口上的连接信息
 
