@@ -1,0 +1,348 @@
+---
+layout:     post
+title:      "记一次MySQL分析优化经历"
+subtitle:   "What doesn't kill you makes you stronger"
+date:       2020-05-29
+author:     "Lydia"
+header-img: "img/post-bg-mysql.png"
+catalog: true
+tags:
+    - MySQL
+---
+
+本文记一次MySQL分析优化经历。
+
+> 说明：本次MySQL版本为5.7
+
+**优化思路**
+
+- 索引设计思考。多个条件可以考虑联合索引，遵循**最左前缀原则**。比如索引(a,b)相当于建立了(a),(a,b)。
+- 执行计划上遵循`ID相同、从上到下；ID不同、从下到上`，思考用小表驱动大表
+- 比较的字段类型尽量一致，避免隐式转换
+- 尽量不要用子查询，特别是子查询需要获取全表数据
+
+# 背景
+
+本着数据驱动思想，我像往常一样打开电脑验证数据，但不知道为啥今天报错了，前几天还是OK的。
+
+```
+MySQL [(none)]> select order_id from sunny_car_pool where state = 60 and order_id not in (select order_id from sunny_renting_miles);
+ERROR 2013 (HY000): Lost connection to MySQL server during query
+```
+
+鉴于前天听了基础架构RDS最佳实践的分享，SQL性能优化引起了我极大兴趣，决定探究问题卡点以及如何优化。来猜猜执行以下命令会发生什么？
+
+```
+MySQL [(none)]> desc select count(1) from sunny_car_pool where state = 60 and order_id not in (select order_id from sunny_renting_miles);
+```
+
+结果为：
+
+| id   | select_type        | table               | partitions | type  | possible_keys | key          | key_len | ref  | rows   | filtered | Extra                    |
+| ---- | ------------------ | ------------------- | ---------- | ----- | ------------- | ------------ | ------- | ---- | ------ | -------- | ------------------------ |
+| 1    | PRIMARY            | sunny_car_pool      | NULL       | ALL   | NULL          | NULL         | NULL    | NULL | 34620  | 9.00     | Using where              |
+| 2    | DEPENDENT SUBQUERY | sunny_renting_miles | NULL       | index | idx_order_id  | idx_order_id | 1022    | NULL | 624889 | 10.00    | Using where; Using index |
+
+一头雾水，只记得分享时提到type列**由左向右效率递增**。
+
+| ALL  | index | range | ref  | eq_ref | const\system |
+| ---- | ----- | ----- | ---- | ------ | ------------ |
+
+那么其他字段具体代表什么含义呢，实际场景我如何优化呢？
+
+# 参数解释
+
+再了解这些参数前，我们先了解下 MySQL执行计划Explain。
+
+根据表、列、索引的详细信息和WHERE子句中的条件，MySQL优化器考虑了许多技术来有效执行SQL查询中涉及的查找。可以在不读取所有行的情况下执行对大型表的查询;可以在不比较每个行组合的情况下执行涉及多个表的联接。优化器选择执行最高效查询的一组操作称为查询执行计划，即Explain。
+
+EXPLAIN语句提供有关MySQL如何执行语句的信息，可与SELECT，DELETE，INSERT，REPLACE和UPDATE语句一起使用。下面我们详细了解返回的参数及含义。
+
+### id
+
+选择标识符。这是查询中的SELECT的序号。如果行引用其他行的联合结果，则该值可以为NULL。
+
+- id相同执行顺序由上至下
+- id不同，id值越大优先级越高，越先被执行
+- id为`null`时表示一个结果集，不需要使用它查询，常出现在包含`union`等查询语句中
+
+### select_type
+
+select查询类型。
+
+| 类型               | 含义                                                         |
+| ------------------ | ------------------------------------------------------------ |
+| SIMPLE             | 简单查询（不包含 UNION 查询或子查询  ）                        |
+| PRIMARY            | 最外层的查询                         |
+| UNION              | UNION 的第二或随后的查询                        |
+| DEPENDENT UNION    | UNION 中的第二个或后面的查询语句, 取决于外面的查询           |
+| UNION_RESULT       | 从UNION中获取结果集                                          |
+| SUBQUERY           | 子查询中的第一个 SELECT                         |
+| DEPENDENT SUBQUERY | 子查询中的第一个 SELECT，取决于外面的查询。即子查询依赖于外层查询的结果 |
+| DERIVED            | 派生表， from字句中出现的子查询，其他数据库中可能叫做内联视图或嵌套select |
+|MATERIALIZED|物化子查询|
+|UNCACHEABLE SUBQUERY|一个子查询，其结果不能被缓存，必须为外部查询的每一行重新计算|
+|UNCACHEABLE UNION|属于非缓存子查询的联合中的第二个或更晚的选择(参见UNCACHEABLE SUBQUERY)|
+
+DEPENDENT通常表示使用相关子查询。
+
+DEPENDENT SUBQUERY 值不同于 UNCACHEABLE SUBQUERY 值。对于DEPENDENT SUBQUERY 来说，对于来自外部上下文的变量的每组不同值，子查询只重新计算一次。对于UNCACHEABLE SUBQUERY，将对外部上下文的每一行重新评估子查询。
+
+子查询的可缓存性不同于在查询缓存中缓存查询结果。子查询缓存发生在查询执行期间，而查询缓存仅用于在查询执行完成后存储结果。
+
+### table
+
+表示查询涉及的表或衍生表。
+
+- <unionM,N>:行是指id值为M和N的行的并集
+- <derivedN>:行引用id值为n的行的派生表结果。例如，派生表可能来自from子句中的子查询
+- <subqueryN>:该行引用id值为N的行的物化子查询的结果
+
+### partitions
+
+查询将匹配记录所在的分区。对于未分区的表，该值为NULL。
+
+表分区、表创建的时候可以指定通过那个列进行表分区。
+
+比如：
+
+```
+create table tmp (
+    id int unsigned not null AUTO_INCREMENT,
+    name varchar(255),
+    PRIMARY KEY (id)
+) engine = innodb
+partition by key (id) partitions 5;
+```
+
+在5.7之前默认不显示分区信息需要手动指明。
+
+```
+explain partitions select * from emp;
+```
+
+### type
+
+描述了如何连接表。提供了判断查询是否高效的重要依据依据。通过 `type` 字段, 我们判断此次查询是 `全表扫描` 还是 `索引扫描` 等。下面按照从最佳类型到最差类型的顺序排列：
+
+| 类型         | 含义                                                         |使用|
+| ------------ | ------------------------------------------------------------ |--|
+| system | 该表只有一行(= system表)。|这是const连接类型的特殊情况。                             |
+| const        | 表最多有一个匹配行，在查询开始时读取。因为只有一行，所以这一行中的列的值可以被优化器的其他部分视为常量。const表非常快，因为它们只被读取一次。            |const用于将主键或唯一索引的所有部分与常量值进行比较。   |
+| eq_ref       | 对于前一个表中的每个行组合，从这个表中读取一行。除了系统和const类型之外，这是最好的连接类型。当联接使用索引的所有部分并且索引是主键或惟一非空索引时，将使用该索引。      |eq ref可用于使用=操作符比较的索引列。比较值可以是常量，也可以是使用在该表之前读取的表中的列的表达式。|
+| ref          | 对于前一个表中的每个行组合，从这个表中读取具有匹配索引值的所有行。如果连接只使用键的最左端前缀，或者如果键不是主键或惟一索引(换句话说，如果连接不能根据键值选择单个行)，则使用ref。如果使用的键只匹配几行，这是一种很好的连接类型|ref可以用于使用=或<=>运算符进行比较的索引列。|
+|fulltext|连接是使用全文索引(FULLTEXT)执行的||
+| ref_or_null     |这个连接类型类似于ref，但是附加了MySQL对包含空值的行进行额外的搜索。这种连接类型优化最常用于解析子查询。                                                              ||
+| index_merge  | 这个连接类型表明使用了索引合并优化 ||
+|unique_subquery|此类型替换以下形式的子查询中的某些eq ref value IN (SELECT primary_key FROM single_table WHERE some_expr)|unique_subquery只是一个索引查找函数，可以完全替换子查询以提高效率。|
+|index_subquery|此连接类型类似于unique_subquery。 |它代替了IN子查询，但适用于以下形式的子查询中的非唯一索引：value IN (SELECT key_column FROM single_table WHERE some_expr)|
+|range|使用索引选择行，仅检索给定范围内的行。 输出行中的键列指示使用哪个索引。 key_len包含使用的最长的键部分。 此类型的ref列为NULL。                                                     |当使用任意的=、<>、>、>=、<、<=、is NULL、<=>、BETWEEN、LIKE或IN()操作符将键列与常量进行比较时，可以使用range|
+| index        |索引连接类型与所有其他连接类型相同，不同之处在于索引树是被扫描的。如果索引是查询的覆盖索引，并且可以用来满足表中所需的所有数据，那么只扫描索引树。使用从索引中读取来按索引顺序查找数据行来执行全表扫描。使用索引不会出现在 Extra 的列中。|当查询只使用属于单个索引的列时，MySQL可以使用这种连接类型|
+| ALL          | 对来自前一个表的每个行组合进行全表扫描。如果该表是第一个没有标记const的表，这通常是不好的，在所有其他情况下通常非常糟糕。通常，您可以通过添加索引来避免这一切，这些索引允许基于常量值或来自早期表的列值从表中检索行。                                                    ||
+
+**常用性能比较**
+
+>  ALL < index < range ~ index_merge < ref < eq_ref < const < system
+
+### possible_keys
+
+指示MySQL可以从中选择的索引来查找该表中的行，注意不一定会使用。查询涉及到的字段上若存在索引，则该索引将被列出来。当该列为 `NULL`时就要考虑当前的`SQL`是否需要优化了，可以通过检查WHERE子句来检查它是否引用了某个列或适合索引的列，从而提高查询的性能。。
+
+### key
+
+key列表示MySQL实际决定使用的键(索引)。如果MySQL决定使用一个可能的键索引来查找行，那么该索引将作为键值列出。
+
+key可能会命名一个索引，而这个索引在可能的key值中不存在。如果所有可能的键索引都不适合查找行，但是查询选择的所有列都是其他索引的列，那么就会发生这种情况。也就是说，指定的索引覆盖所选的列，因此尽管索引扫描不用于确定要检索哪些行，但是索引扫描比数据行扫描更有效。
+
+对于InnoDB，即使查询也选择主键，辅助索引也可能覆盖所选的列，因为InnoDB将主键值与每个辅助索引一起存储。如果key是NULL, MySQL就没有索引来更有效地执行查询。
+
+要强制MySQL使用或忽略“可能的键”列中列出的索引，请在查询中使用强制索引、使用索引或忽略索引。
+
+对于MyISAM表，运行ANALYZE TABLE可以帮助优化器选择更好的索引。对于MyISAM表，myisamchk——analyze执行相同的操作。
+
+select_type为index_merge时，这里可能出现两个以上的索引，其他的select_type这里只会出现一个。
+
+### key_len
+
+表示查询优化器使用了索引的字节数。这个字段可以评估组合索引是否完全被使用，或只有最左部分字段被使用到。
+
+**如果key字段值为null，则key_len字段值也为null,而且对于key_len越小越好，当然不能为null**
+
+key_len 的计算规则如下:
+
+- 字符串
+  - char(n): n 字节长度
+  - varchar(n): 如果是 utf8 编码, 则是 3 *n + 2字节；如果是 utf8mb4 编码, 则是 4* n + 2 字节。
+- 数值类型:
+  - TINYINT: 1字节
+  - SMALLINT: 2字节
+  - MEDIUMINT: 3字节
+  - INT: 4字节
+  - BIGINT: 8字节
+- 时间类型
+  - DATE: 3字节
+  - TIMESTAMP: 4字节
+  - DATETIME: 8字节
+- 字段属性: NULL 属性 占用一个字节，如果一个字段是 NOT NULL 的，则没有此属性。
+
+### ref
+
+ref列显示将哪些列或常量与键列中命名的索引进行比较，以从表中选择行。
+
+如果值是func，则使用的值是某个函数的结果。要查看哪个函数，请在解释之后使用SHOW WARNINGS来查看扩展的解释输出。这个函数实际上可能是一个运算符，比如算术运算符。
+
+### rows
+
+rows列表示MySQL认为执行查询必须检查的行数。对于InnoDB表，这个数字是一个估计值，可能并不总是准确的。
+
+通过获取EXPLAIN输出的rows列中值的乘积，可以很好地表明联接的好坏。 这应该大致告诉您MySQL必须检查多少行才能执行查询。 如果使用max_join_size系统变量限制查询，则此行乘积还用于确定要执行哪些多表SELECT语句以及中止哪个多表SELECT语句。
+
+MySQL 查询优化器根据统计信息估算 SQL 要查找到结果集需要扫描读取的数据行数。
+这个值非常直观显示 SQL 的效率好坏，原则上 rows 越少越好。
+
+### filtered
+
+filtered 列指示将由表条件筛选的表行的估计百分比。最大值是100，这意味着没有对行进行过滤。从100开始递减的值表示过滤量在增加。rows  显示被检查的估计行数，rows × filtered 显示将与下表连接的行数。例如，如果行数为1000，并且过滤后的行数为50.00(50%)，则要与下表连接的行数为1000×50% = 500。
+
+使用explain extended时会出现这个列，5.7之后的版本默认就有这个字段，不需要使用explain extended了。这个字段表示存储引擎返回的数据在server层过滤后，剩下多少满足查询的记录数量的比例，注意是百分比，不是具体记录数。
+
+### Extra
+
+此列包含有关MySQL如何解析查询的其他信息。因类型较多，只列出下面重点关注的情形。
+
+| 类型            | 含义                                                         |
+| --------------- | ------------------------------------------------------------ |
+| Using filesort  | 使用文件排序，表示 MySQL 需额外的排序操作，不能通过索引顺序达到排序效果。 一般都建议优化去掉，因为这样的查询 CPU 资源消耗大 |
+| Using index     | "覆盖索引扫描", 表示查询在索引树中就可查找所需数据, 不用扫描表数据文件, 往往说明性能不错 |
+| Using temporary | 查询有使用临时表, 一般出现于排序, 分组和多表 join 的情况, 查询效率不高, 建议优化 |
+| Using where     | 使用了where子句来过滤结果集                                  |
+
+# 实战
+
+理论知识储备完毕，回到上面的问题，我们如何一步步优化呢？经DBA提醒先看下DDL。
+
+```
+CREATE TABLE `sunny_car_pool` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `order_id` bigint(20) NOT NULL DEFAULT '0' COMMENT '订单号',
+  `state` tinyint(4) NOT NULL DEFAULT '0' COMMENT '状态',
+  PRIMARY KEY (`id`),
+  KEY `idx_order_id` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='表A'
+```
+```
+CREATE TABLE `sunny_renting_miles` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `order_id` varchar(255) COLLATE utf8mb4_bin NOT NULL DEFAULT '' COMMENT '订单id',
+  `sum_xxx` varchar(255) COLLATE utf8mb4_bin NOT NULL DEFAULT '' COMMENT '求和',
+  PRIMARY KEY (`id`),
+  KEY `idx_order_id` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='表B'
+```
+
+我的查询语句如下：
+
+```
+select order_id from sunny_car_pool where state = 60 and order_id not in (select order_id from sunny_renting_miles);
+```
+对应的执行计划为：
+
+| id   | select_type        | table               | partitions | type  | possible_keys | key          | key_len | ref  | rows   | filtered | Extra                    |
+| ---- | ------------------ | ------------------- | ---------- | ----- | ------------- | ------------ | ------- | ---- | ------ | -------- | ------------------------ |
+| 1    | PRIMARY            | sunny_car_pool      | NULL       | ALL   | NULL          | NULL         | NULL    | NULL | 34774  | 10.00    | Using where              |
+| 2    | DEPENDENT SUBQUERY | sunny_renting_miles | NULL       | index | idx_order_id  | idx_order_id | 1022    | NULL | 624033 | 10.00    | Using where; Using index |
+
+通过执行计划，在DBA指导下看出存在一些问题：
+
+- order_id 在两个表中定义的类型不一样
+- 子查询中用到全表扫描
+- not in 用不到索引
+
+### 问题说明
+
+- 类型不一样，在比较的时候就要发生隐世转换，相当于有一个运算。运算后就是一个新的值，这个值在索引里没有，就会导致即使看起来可以用到索引，实际没有用到。
+- 从执行计划上看出是大表先执行，可以想办法用小表驱动大表。那么sunny_car_pool(state, order_id)索引里就能存下完成查询所需要的数据。
+- 来自EXPLAIN的输出中的rows列是来自MySQL连接优化器的有根据的猜测。因为表的类型是ALL，所以此输出表明MySQL正在为表生成笛卡尔乘积。 也就是说，每行组合。 这需要相当长的时间，因为必须检查每个表中的行数的乘积。 对于当前情况，该乘积为34774×624033 = XXX行。 如果表更大，只能想象需要多长时间。
+- 索引设计。多个条件可以考虑联合索引，遵循**最左前缀原则**。比如如果建立了(a,b)相当于建立了(a),(a,b)。
+
+### 优化方案
+
+- 子查询中的表字段 order_id 类型改为 bigint
+- 外查询表添加索引 add index idx_state_order_id(state, order_id);
+
+> **idx_state_order_id(state, order_id) 比 idx_state(state) 好处是在filter的时候不需要再回表取 order_id 的值。**
+
+```
+alter table sunny_renting_miles modify order_id bigint default 0 not null comment '订单id';
+alter table sunny_car_pool add index idx_state_order_id (state, order_id);
+```
+
+> 优化后
+
+| id   | select_type        | table               | partitions | type | possible_keys      | key                | key_len | ref                                    | rows | filtered | Extra                    |
+| ---- | ------------------ | ------------------- | ---------- | ---- | ------------------ | ------------------ | ------- | -------------------------------------- | ---- | -------- | ------------------------ |
+| 1    | PRIMARY            | sunny_car_pool      | NULL       | ref  | idx_state_order_id | idx_state_order_id | 1       | const                                  | 1742 | 100.00   | Using where; Using index |
+| 2    | DEPENDENT SUBQUERY | sunny_renting_miles | NULL       | ref  | idx_order_id       | idx_order_id       | 8       | risk_asset_pre.sunny_car_pool.order_id | 1    | 100.00   | Using index              |
+
+### 优化分析
+
+在EXPLAIN的帮助下，可以看到应该相关表已添加索引，以便通过使用索引查找行来加快语句的执行速度。
+
+
+---
+
+
+上面时基于SELECT场景，其他场景执行计划如何呢？
+
+```
+MySQL [(none)]> desc update merry_event_register set mode_info = '[1,2,3,4]' where id >0;
+```
+
+| id   | select_type | table                | partitions | type  | possible_keys | key     | key_len | ref   | rows | filtered | Extra       |
+| ---- | ----------- | -------------------- | ---------- | ----- | ------------- | ------- | ------- | ----- | ---- | -------- | ----------- |
+| 1    | UPDATE      | merry_event_register | NULL       | range | PRIMARY       | PRIMARY | 8       | const | 14   | 100.00   | Using where |
+
+# 总结
+
+数据库性能取决于数据库级别的几个因素，例如表，查询和配置设置。 这些软件结构导致在硬件级别执行CPU和I / O操作，您必须将这些操作最小化并使其尽可能高效。 在研究数据库性能时，首先要学习软件方面的高级规则和准则，并使用时钟时间来衡量性能。 成为专家之后，您将了解有关内部情况的更多信息，并开始衡量诸如CPU周期和I / O操作之类的东西。
+
+### 在数据库级别进行优化
+
+使数据库应用程序快速运行的最重要因素是它的基本设计。
+
+- 表的结构是否正确?特别是，列是否具有正确的数据类型，每个表是否具有适合工作类型的列?例如，执行频繁更新的应用程序通常有很多表，但是只有很少的列，而分析大量数据的应用程序通常只有很少的表，但是有很多列。
+- 是否安装了正确的索引以提高查询效率？
+- 您是否为每个表使用了适当的存储引擎，并利用了所使用的每个存储引擎的优势和功能？ 特别是，对于性能和可伸缩性而言，选择事务存储引擎（例如InnoDB）或非事务存储引擎（例如MyISAM）可能非常重要。[InnoDB是新表的默认存储引擎。]
+- 每个表都使用适当的行格式吗？ 该选择还取决于表使用的存储引擎。 特别是，压缩表使用较少的磁盘空间，因此需要较少的磁盘I / O来读写数据。 压缩可用于具有InnoDB表的所有类型的工作负载以及只读的MyISAM表。
+- 应用程序是否使用适当的锁定策略？ 例如，通过在可能的情况下允许共享访问，以便数据库操作可以同时运行，并在适当的时候请求独占访问，以使关键操作获得最高优先级。 同样，存储引擎的选择很重要。 InnoDB存储引擎无需您的参与即可处理大多数锁定问题，从而提高了数据库的并发性，并减少了代码的试验和调整量。
+- 是否所有用于缓存大小的内存区域都正确?也就是说，大到足以容纳频繁访问的数据，但又不会大到使物理内存超载并导致分页。要配置的主要内存区域是InnoDB缓冲池、MyISAM键缓存和MySQL查询缓存。
+
+### 在硬件级别进行优化
+
+随着数据库变得越来越忙，任何数据库应用程序最终都会遇到硬件限制。DBA必须评估是否可以调优应用程序或重新配置服务器以避免这些瓶颈，或者是否需要更多的硬件资源。系统瓶颈通常来自这些来源:
+
+- 磁盘寻求。磁盘查找一段数据需要时间。对于现代的磁盘，这一过程的平均时间通常低于10ms，所以理论上我们可以达到100次每秒。在使用新磁盘时，这一次的改进比较慢，而且很难对单个表进行优化。优化寻道时间的方法是将数据分布到多个磁盘上。
+- 磁盘读写。 当磁盘位于正确的位置时，我们需要读取或写入数据。 使用现代磁盘，一个磁盘至少可以提供10–20MB / s的吞吐量。 与查找相比，优化起来更容易，因为您可以从多个磁盘并行读取。
+- CPU周期。当数据在主存时，我们必须处理它以得到我们的结果。与内存数量相比，拥有较大的表是最常见的限制因素。但对于小表，速度通常不是问题。
+- 内存带宽。当CPU需要的数据超过CPU缓存的容量时，主内存带宽就会成为瓶颈。对于大多数系统来说，这是一个不常见的瓶颈，但是需要注意。
+
+### 平衡便携性和性能
+
+要在可移植的MySQL程序中使用面向性能的SQL扩展，可以在/*! */ 注释分隔符中的语句中包装特定于MySQL的关键字。其他SQL Server忽略注释的关键字。
+
+---
+
+
+以上。纸上得来终觉浅，觉知此事要躬行。
+
+![image](https://note.youdao.com/src/8AB063A57CAC48F89314E084BB8DCD0C)
+
+# 参考
+
+[官方文档](https://dev.mysql.com/doc/refman/5.7/en/explain-output.html#explain-extra-information)
+
+[mysql 执行计划explain详解](https://blog.csdn.net/u012410733/article/details/66472157)
+
+[这一次，彻底读懂Mysql执行计划](https://juejin.im/post/5a52386d51882573443c852a)
+
+[[MySQL 性能优化神器 Explain 使用分析](https://segmentfault.com/a/1190000008131735)]
