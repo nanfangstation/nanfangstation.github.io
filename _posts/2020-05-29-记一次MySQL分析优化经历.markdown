@@ -4,7 +4,7 @@ title:      "记一次MySQL分析优化经历"
 subtitle:   "What doesn't kill you makes you stronger"
 date:       2020-05-29
 author:     "Lydia"
-header-img: "img/post-bg-mysql.jpeg"
+header-img: "img/post-bg-mysql.jpg"
 catalog: true
 tags:
     - MySQL
