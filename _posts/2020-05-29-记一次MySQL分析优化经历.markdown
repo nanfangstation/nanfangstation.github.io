@@ -4,7 +4,7 @@ title:      "记一次MySQL分析优化经历"
 subtitle:   "What doesn't kill you makes you stronger"
 date:       2020-05-29
 author:     "Lydia"
-header-img: "img/post-bg-mysql.png"
+header-img: "img/post-bg-mysql.jpeg"
 catalog: true
 tags:
     - MySQL
@@ -45,8 +45,7 @@ MySQL [(none)]> desc select count(1) from sunny_car_pool where state = 60 and or
 
 一头雾水，只记得分享时提到type列**由左向右效率递增**。
 
-| ALL  | index | range | ref  | eq_ref | const\system |
-| ---- | ----- | ----- | ---- | ------ | ------------ |
+>  ALL < index < range ~ index_merge < ref < eq_ref < const < system
 
 那么其他字段具体代表什么含义呢，实际场景我如何优化呢？
 
@@ -94,9 +93,9 @@ DEPENDENT SUBQUERY 值不同于 UNCACHEABLE SUBQUERY 值。对于DEPENDENT SUBQU
 
 表示查询涉及的表或衍生表。
 
-- <unionM,N>:行是指id值为M和N的行的并集
-- <derivedN>:行引用id值为n的行的派生表结果。例如，派生表可能来自from子句中的子查询
-- <subqueryN>:该行引用id值为N的行的物化子查询的结果
+- `<unionM,N>` : 行是指id值为M和N的行的并集
+- `<derivedN>` : 行引用id值为n的行的派生表结果。例如，派生表可能来自from子句中的子查询
+- `<subqueryN>` : 该行引用id值为N的行的物化子查询的结果
 
 ### partitions
 
