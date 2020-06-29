@@ -1,0 +1,519 @@
+---
+layout:     post
+title:      "记一次JVM线上问题排查"
+subtitle:   "觉知此事要躬行..."
+date:       2020-05-10
+author:     "Lydia"
+header-img: "img/post-bg-jvm.jpeg"
+catalog: true
+tags:
+    - JVM
+---
+
+前几天一直被一个线上问题困扰，经过坚持不懈的努力终于解决了。很开心，同时记录自己的收获。
+
+- 线上多半是CPU或者内存问题，平时需要关注各种指标和水位，熟练各种命令【cpu情况可以用top，内存用jvm命令】
+- 堆栈问题优先关注死锁，大量线程block可以通过dump文件快速确定关键导火索
+- 关注线程池参数调优，每个参数的配置要去认真了解，特别是对资源的获取上，通过各种方式去优化避免成为瓶颈。
+- 平时要关注思考整体服务的容量评估和监控情况
+- 不要有侥幸心理，认真耐心对待每一个问题，直到你真的懂了它
+- 多和他人交流可能很快能打开思路，拓宽自己的眼界
+
+jvm命令重点记录
+
+ 命令| 用法|含义
+---|---|---
+jps |jps -l|查询虚拟机进程状态拿到pid
+jstat|jstat -gcutil pid 2000|每隔2s获取虚拟机统计信息
+jstack|jstack -F 1065 >> jstack.log|Java堆栈跟踪分析
+jmap|jmap -dump:format=b,file=heapdump.phrof pid|生成堆转储快照，文件可能达到G级别数据，耗时较长
+
+备注：当执行命令虚拟机没有响应时，-F可以强制执行，此时Arthas无法作用，但平时通过Arthas看单个请求耗时还是很好用的
+
+以下是详细的排查过程。
+
+# 5.7号
+需求是新增两个分布式定时调度任务，在和下游服务联调的时候，发现定时任务elastic-job总是上线后没多久显示下线了而不是分片待调整，当时以为是定时任务的问题。
+
+![elatic-job](http://note.youdao.com/yws/res/4561/WEBRESOURCE817543a3db664e3d12a6e54d5beedc5a)
+
+服务刚发布完是正常的，也打印这个启动日志 。
+
+```
+[INFO][2020-05-06T19:16:50.355+0800][org.quartz.core.QuartzScheduler:305:main]Scheduler meta-data: Quartz Scheduler (v2.2.1) 'one-piece-merry-job-task-remind-car-return' with instanceId 'NON_CLUSTERED'
+[INFO][2020-05-06T19:16:50.355+0800][org.quartz.impl.StdSchedulerFactory:1339:main]Quartz scheduler 'one-piece-merry-job-task-remind-car-return' initialized from an externally provided properties instance.
+[INFO][2020-05-06T19:16:50.444+0800][org.quartz.core.QuartzScheduler:575:main]Scheduler one-piece-merry-job-task-remind-car-return_$_NON_CLUSTERED started.
+[INFO][2020-05-06T19:16:50.445+0800][com.middleware.summer.cloud.job.parser.JobConfParser:154:main]【one-piece-merry-job-task-remind-car-return】    com.lydia.schedule.remind.RemindCarReturnSchedule   init success
+```
+后来发现job挂掉的前后打印了很多下面的错误
+```
+Caused by: org.apache.ibatis.exceptions.PersistenceException:
+### Error querying database.  Cause: org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 33677ms.
+### The error may exist in com/lydia/dal/mysql/mapper/SunnyCarPoolMapper.java (best guess)
+### The error may involve com.lydia.dal.mysql.mapper.SunnyCarPoolMapper.selectOne
+### The error occurred while executing a query
+### Cause: org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 33677ms.
+        at org.apache.ibatis.exceptions.ExceptionFactory.wrapException(ExceptionFactory.java:30)
+        at org.apache.ibatis.session.defaults.DefaultSqlSession.selectList(DefaultSqlSession.java:149)
+        at org.apache.ibatis.session.defaults.DefaultSqlSession.selectList(DefaultSqlSession.java:140)
+        at org.apache.ibatis.session.defaults.DefaultSqlSession.selectOne(DefaultSqlSession.java:76)
+        at sun.reflect.GeneratedMethodAccessor825.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.lang.reflect.Method.invoke(Method.java:498)
+        at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:433)
+        ... 29 more
+Caused by: org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 33677ms.
+        at org.springframework.jdbc.datasource.DataSourceUtils.getConnection(DataSourceUtils.java:81)
+        at org.mybatis.spring.transaction.SpringManagedTransaction.openConnection(SpringManagedTransaction.java:82)
+        at org.mybatis.spring.transaction.SpringManagedTransaction.getConnection(SpringManagedTransaction.java:68)
+        at org.apache.ibatis.executor.BaseExecutor.getConnection(BaseExecutor.java:336)
+        at com.baomidou.mybatisplus.core.executor.MybatisSimpleExecutor.prepareStatement(MybatisSimpleExecutor.java:93)
+        at com.baomidou.mybatisplus.core.executor.MybatisSimpleExecutor.doQuery(MybatisSimpleExecutor.java:66)
+        at org.apache.ibatis.executor.BaseExecutor.queryFromDatabase(BaseExecutor.java:324)
+        at org.apache.ibatis.executor.BaseExecutor.query(BaseExecutor.java:156)
+        at org.apache.ibatis.executor.CachingExecutor.query(CachingExecutor.java:109)
+        at org.apache.ibatis.executor.CachingExecutor.query(CachingExecutor.java:83)
+        at sun.reflect.GeneratedMethodAccessor137.invoke(Unknown Source)
+        at java.lang.reflect.Method.invoke(Method.java:498)
+        at org.apache.ibatis.plugin.Plugin.invoke(Plugin.java:63)
+        at com.sun.proxy.$Proxy121.query(Unknown Source)
+        at sun.reflect.GeneratedMethodAccessor137.invoke(Unknown Source)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMe
+```
+当时中间件同学说我的应用和zk的连接有问题，但看起来只有我的节点会出现，感觉和压力有关系。我当时单纯的以为是预发消费消息太多了（当时单机和线上三台机器压力一样大），所以减少了部分消息消费，这时问题有所缓和。
+但是不久之后，问题还是出现了，当时的表现是：
+
+- 预发环境部署服务后 跑了差不多5分钟之后 整个服务夯住 没有死锁 很多线程阻塞
+- 打印的最后一行日志和kafka有关
+当时以为服务压力问题，所以把kafka消费的任务停掉了，当时预发OK了，所以整体以为服务压力问题，到了线上三台机器的话应该没有问题。那时很机智的保留了dump文件，然后因为打开很慢没有仔细分析。
+
+stack记录是线程block，但是没有死锁，如下：
+```
+Attaching to process ID 1027, please wait...
+Debugger attached successfully.
+Server compiler detected.
+JVM version is 25.181-b13
+Deadlock Detection:
+
+No deadlocks found.
+
+Thread 6415: (state = BLOCKED)
+
+
+Thread 5818: (state = BLOCKED)
+
+
+Thread 5812: (state = BLOCKED)
+
+
+Thread 4142: (state = BLOCKED)
+
+
+Thread 3778: (state = BLOCKED)
+ - sun.misc.Unsafe.park(boolean, long) @bci=0 (Compiled frame; information may be imprecise)
+ - java.util.concurrent.locks.LockSupport.park(java.lang.Object) @bci=14, line=175 (Compiled frame)
+ - java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await() @bci=42, line=2039 (Compiled frame)
+ - java.util.concurrent.ScheduledThreadPoolExecutor$DelayedWorkQueue.take() @bci=100, line=1088 (Compiled frame)
+ - java.util.concurrent.ScheduledThreadPoolExecutor$DelayedWorkQueue.take() @bci=1, line=809 (Compiled frame)
+ - java.util.concurrent.ThreadPoolExecutor.getTask() @bci=149, line=1074 (Compiled frame)
+ - java.util.concurrent.ThreadPoolExecutor.runWorker(java.util.concurrent.ThreadPoolExecutor$Worker) @bci=26, line=1134 (Compiled frame)
+ - java.util.concurrent.ThreadPoolExecutor$Worker.run() @bci=5, line=624 (Compiled frame)
+ - java.lang.Thread.run() @bci=11, line=748 (Compiled frame)
+
+
+Thread 3553: (state = BLOCKED)
+ - sun.misc.Unsafe.park(boolean, long) @bci=0 (Compiled frame; information may be imprecise)
+ - java.util.concurrent.ForkJoinPool.awaitWork(java.util.concurrent.ForkJoinPool$WorkQueue, int) @bci=350, line=1824 (Compiled frame)
+ - java.util.concurrent.ForkJoinPool.runWorker(java.util.concurrent.ForkJoinPool$WorkQueue) @bci=44, line=1693 (Compiled frame)
+ - java.util.concurrent.ForkJoinWorkerThread.run() @bci=24, line=157 (Interpreted frame)
+
+
+Thread 3551: (state = BLOCKED)
+
+
+Thread 3548: (state = BLOCKED)
+```
+
+kafka日志如下：
+
+```
+[INFO][2020-05-09T19:48:32.805+0800][org.apache.kafka.clients.consumer.internals.AbstractCoordinator:879:kafka-coordinator-heartbeat-thread | cg_merry_device_low_battery_prod][Consumer clientId=consumer-java-2, groupId=cg_merry_device_low_battery_prod] Attempt to heartbeat failed for since member id consumer-java-2-17ebb73d-6290-4bde-bacf-97ac23cb063e is not valid.
+```
+```
+[INFO][2020-05-09T19:47:40.013+0800][org.apache.kafka.clients.consumer.internals.AbstractCoordinator:871:kafka-coordinator-heartbeat-thread | cg_merry_device_low_battery_prod][Consumer clientId=consumer-java-2, groupId=cg_merry_device_low_battery_prod] Attempt to heartbeat failed since group is rebalancing
+```
+
+# 5.8号
+8号是需求上线的日子，凌晨还在加gc日志，希望能看出更多内容。无奈此举想法是好的，但是我配错了路径导致没有生效。【哭
+
+完美错过所有的JVM观察，当时看到错误日志都是数据库链接超时，导致我的重心开始迁移到数据库连接池参数调优。
+
+一开始数据库连接池用的Hikari，参数配置如下
+```
+spring.datasource.type_name=hikari
+spring.datasource.hikari.driver-class-name=com.mysql.jdbc.Driver
+spring.datasource.hikari.url=xxx
+spring.datasource.hikari.username=xxx
+spring.datasource.hikari.password=xxx
+spring.datasource.hikari.min-idle=5
+spring.datasource.hikari.maximum-pool-size=15
+spring.datasource.hikari.auto-commit=true
+spring.datasource.hikari.idle-timeout=30000
+spring.datasource.hikari.pool-name=DatebookHikariCP
+spring.datasource.hikari.max-lifetime=1800000
+spring.datasource.hikari.connection-timeout=30000
+spring.datasource.hikari.connection-test-query=SELECT 1
+```
+尝试调大maximum-pool-size=100或者200还是没有用，但此时不知如何观察运行时线程池活跃数量，异常如下
+
+```java
+[ERROR][2020-05-08T18:35:04.698+0800][com.lydia.biz.plugin.impl.MerryDeviceServiceImpl:165:pool-4-thread-625]_undef||traceid=||spanid=02804420dd6521e1||cspanid=||hintCode=0||hintContent=||_msg=根据sn码查设备异常 sn=03agph2zgob53d0c error=org.mybatis.spring.MyBatisSystemException: nested exception is org.apache.ibatis.exceptions.PersistenceException: 
+
+### Error querying database.  Cause: org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 31593ms.
+
+### The error may exist in com/lydia/dal/mysql/mapper/SunnyCarPoolMapper.java (best guess)
+
+### The error may involve com.lydia.dal.mysql.mapper.SunnyCarPoolMapper.selectOne
+
+### The error occurred while executing a query
+
+### Cause: org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 31593ms.
+
+    at org.mybatis.spring.MyBatisExceptionTranslator.translateExceptionIfPossible(MyBatisExceptionTranslator.java:77)
+    at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:446)
+    at com.sun.proxy.$Proxy94.selectOne(Unknown Source)
+    at org.mybatis.spring.SqlSessionTemplate.selectOne(SqlSessionTemplate.java:166)
+    at com.baomidou.mybatisplus.core.override.MybatisMapperMethod.execute(MybatisMapperMethod.java:89)
+    at com.baomidou.mybatisplus.core.override.MybatisMapperProxy.invoke(MybatisMapperProxy.java:62)
+    at com.sun.proxy.$Proxy97.selectOne(Unknown Source)
+    at com.baomidou.mybatisplus.extension.service.impl.ServiceImpl.getOne(ServiceImpl.java:254)
+    at com.baomidou.mybatisplus.extension.service.IService.getOne(IService.java:192)
+    at com.baomidou.mybatisplus.extension.service.IService$$FastClassBySpringCGLIB$$f8525d18.invoke(<generated>)
+    at org.springframework.cglib.proxy.MethodProxy.invoke(MethodProxy.java:204)
+    at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:667)
+    at com.lydia.biz.manager.impl.SunnyCarPoolManagerImpl$$EnhancerBySpringCGLIB$$66c099bc.getOne(<generated>)
+    at com.lydia.biz.plugin.impl.MerryDeviceServiceImpl.getOrderByCarNo(MerryDeviceServiceImpl.java:173)
+    at com.lydia.biz.plugin.impl.MerryDeviceServiceImpl.listBySn(MerryDeviceServiceImpl.java:76)
+    at com.lydia.biz.event.factory.EventProcessorFactory.process(EventProcessorFactory.java:99)
+    at com.lydia.biz.event.ddmq.DDMQEvent.onConsume(DDMQEvent.java:89)
+    at com.lydia.biz.event.ddmq.DDMQEvent$1.lambda$process$12(DDMQEvent.java:72)
+    at com.alibaba.ttl.TtlRunnable.run(TtlRunnable.java:49)
+    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+    at java.lang.Thread.run(Thread.java:748)
+
+Caused by: org.apache.ibatis.exceptions.PersistenceException: 
+
+### Error querying database.  Cause: org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 31593ms.
+
+### The error may exist in com/lydia/dal/mysql/mapper/SunnyCarPoolMapper.java (best guess)
+
+### The error may involve com.lydia.dal.mysql.mapper.SunnyCarPoolMapper.selectOne
+
+### The error occurred while executing a query
+
+### Cause: org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 31593ms.
+
+    at org.apache.ibatis.exceptions.ExceptionFactory.wrapException(ExceptionFactory.java:30)
+    at org.apache.ibatis.session.defaults.DefaultSqlSession.selectList(DefaultSqlSession.java:149)
+    at org.apache.ibatis.session.defaults.DefaultSqlSession.selectList(DefaultSqlSession.java:140)
+    at org.apache.ibatis.session.defaults.DefaultSqlSession.selectOne(DefaultSqlSession.java:76)
+    at sun.reflect.GeneratedMethodAccessor589.invoke(Unknown Source)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+    at java.lang.reflect.Method.invoke(Method.java:498)
+    at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:433)
+    ... 20 more
+
+Caused by: org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 31593ms.
+    at org.springframework.jdbc.datasource.DataSourceUtils.getConnection(DataSourceUtils.java:81)
+    at org.mybatis.spring.transaction.SpringManagedTransaction.openConnection(SpringManagedTransaction.java:82)
+    at org.mybatis.spring.transaction.SpringManagedTransaction.getConnection(SpringManagedTransaction.java:68)
+    at org.apache.ibatis.executor.BaseExecutor.getConnection(BaseExecutor.java:336)
+    at com.baomidou.mybatisplus.core.executor.MybatisSimpleExecutor.prepareStatement(MybatisSimpleExecutor.java:93)
+    at com.baomidou.mybatisplus.core.executor.MybatisSimpleExecutor.doQuery(MybatisSimpleExecutor.java:66)
+    at org.apache.ibatis.executor.BaseExecutor.queryFromDatabase(BaseExecutor.java:324)
+    at org.apache.ibatis.executor.BaseExecutor.query(BaseExecutor.java:156)
+    at org.apache.ibatis.executor.CachingExecutor.query(CachingExecutor.java:109)
+    at org.apache.ibatis.executor.CachingExecutor.query(CachingExecutor.java:83)
+    at sun.reflect.GeneratedMethodAccessor137.invoke(Unknown Source)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+    at java.lang.reflect.Method.invoke(Method.java:498)
+    at org.apache.ibatis.plugin.Plugin.invoke(Plugin.java:63)
+    at com.sun.proxy.$Proxy121.query(Unknown Source)
+    at sun.reflect.GeneratedMethodAccessor137.invoke(Unknown Source)
+    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+    at java.lang.reflect.Method.invoke(Method.java:498)
+    at org.apache.ibatis.plugin.Plugin.invoke(Plugin.java:63)
+    at com.sun.proxy.$Proxy121.query(Unknown Source)
+    at org.apache.ibatis.session.defaults.DefaultSqlSession.selectList(DefaultSqlSession.java:147)
+    ... 26 more
+Caused by: java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 31593ms.
+    at com.zaxxer.hikari.pool.HikariPool.createTimeoutException(HikariPool.java:669)
+    at com.zaxxer.hikari.pool.HikariPool.getConnection(HikariPool.java:183)
+    at com.zaxxer.hikari.pool.HikariPool.getConnection(HikariPool.java:148)
+    at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:100)
+    at org.springframework.jdbc.datasource.DataSourceUtils.fetchConnection(DataSourceUtils.java:157)
+    at org.springframework.jdbc.datasource.DataSourceUtils.doGetConnection(DataSourceUtils.java:115)
+    at org.springframework.jdbc.datasource.DataSourceUtils.getConnection(DataSourceUtils.java:78)
+    ... 46 more
+    
+```
+
+但是无奈不知道是不是配置的参数没有生效，这个错误在服务运行1-2小时还是会复现。而且Hikari无法看到连接池情况，此时我还忽略了Spring Boot Actuator，因为服务Spring Boot版本还是1.5.15.RELEASE，效果不佳。
+
+# 5.9号
+
+开始将数据库线程池换成druid ，配置如下
+
+```java
+spring.datasource.type_name=druid
+spring.datasource.druid.driver-class-name=com.mysql.jdbc.Driver
+spring.datasource.druid.url=xxx
+spring.datasource.druid.username=xxx
+spring.datasource.druid.password=xxx
+spring.datasource.druid.initial-size=2
+spring.datasource.druid.max-active=100
+spring.datasource.druid.min-idle=5
+spring.datasource.druid.max-wait=30000
+# 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒
+spring.datasource.timeBetweenEvictionRunsMillis=60000
+# 配置一个连接在池中最小生存的时间，单位是毫秒
+spring.datasource.minEvictableIdleTimeMillis=300000
+spring.datasource.druid.validation-query=SELECT 1 FROM DUAL
+spring.datasource.druid.pool-prepared-statements=false
+spring.datasource.druid.test-on-borrow=false
+spring.datasource.druid.test-on-return=false
+spring.datasource.druid.test-while-idle=true
+```
+预发环境线程池监控情况
+
+```java
+[
+{
+"Identity": 1487185741,
+"Name": "DataSource-1487185741",
+"DbType": "mysql",
+"DriverClassName": "com.mysql.jdbc.Driver",
+"URL": "xxx",
+"UserName": "xxx",
+"FilterClassNames": [],
+"WaitThreadCount": 0,
+"NotEmptyWaitCount": 9080,
+"NotEmptyWaitMillis": 963380,
+"PoolingCount": 33,
+"PoolingPeak": 93,
+"PoolingPeakTime": 1589084101256,
+"ActiveCount": 15,
+"ActivePeak": 92,
+"ActivePeakTime": 1589084053662,
+"InitialSize": 2,
+"MinIdle": 5,
+"MaxActive": 100,
+"QueryTimeout": 0,
+"TransactionQueryTimeout": 0,
+"LoginTimeout": 0,
+"ValidConnectionCheckerClassName": "com.alibaba.druid.pool.vendor.MySqlValidConnectionChecker",
+"ExceptionSorterClassName": "com.alibaba.druid.pool.vendor.MySqlExceptionSorter",
+"TestOnBorrow": false,
+"TestOnReturn": false,
+"TestWhileIdle": true,
+"DefaultAutoCommit": true,
+"DefaultReadOnly": null,
+"DefaultTransactionIsolation": null,
+"LogicConnectCount": 3631782,
+"LogicCloseCount": 3631567,
+"LogicConnectErrorCount": 0,
+"PhysicalConnectCount": 248,
+"PhysicalCloseCount": 0,
+"PhysicalConnectErrorCount": 0,
+"DiscardCount": 200,
+"ExecuteCount": 3631581,
+"ExecuteUpdateCount": 0,
+"ExecuteQueryCount": 0,
+"ExecuteBatchCount": 0,
+"ErrorCount": 0,
+"CommitCount": 0,
+"RollbackCount": 0,
+"PSCacheAccessCount": 0,
+"PSCacheHitCount": 0,
+"PSCacheMissCount": 0,
+"StartTransactionCount": 0,
+"TransactionHistogram": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"ConnectionHoldTimeHistogram": [
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"RemoveAbandoned": false,
+"ClobOpenCount": 0,
+"BlobOpenCount": 0,
+"KeepAliveCheckCount": 0,
+"KeepAlive": false,
+"FailFast": false,
+"MaxWait": 30000,
+"MaxWaitThreadCount": -1,
+"PoolPreparedStatements": false,
+"MaxPoolPreparedStatementPerConnectionSize": 10,
+"MinEvictableIdleTimeMillis": 1800000,
+"MaxEvictableIdleTimeMillis": 25200000,
+"LogDifferentThread": true,
+"RecycleErrorCount": 0,
+"PreparedStatementOpenCount": 3631581,
+"PreparedStatementClosedCount": 3631567,
+"UseUnfairLock": false,
+"InitGlobalVariants": false,
+"InitVariants": false
+}
+]
+```
+
+当时看预发环境线程池的配置和使用情况OK，但是运行2个小时后，开始会报异常OOM
+
+```java
+[WARN][2020-05-09T22:45:17.527+0800][com.alibaba.druid.pool.DruidDataSource:1414:pool-4-thread-11]get connection timeout retry : 1
+[WARN][2020-05-09T22:45:22.578+0800][com.alibaba.druid.pool.DruidDataSource:1414:MessageProcess-27]get connection timeout retry : 1
+[WARN][2020-05-09T22:45:27.541+0800][com.alibaba.druid.pool.DruidDataSource:1414:MessageProcess-4]get connection timeout retry : 1
+```
+
+```java
+[ERROR][2020-05-10T03:38:45.641+0800][com.alibaba.druid.pool.DruidPooledStatement:368:MessageProcess-11]CommunicationsException, druid version 1.1.22, jdbcUrl : jdbc:mysql://10.88.128.156:4104/sabo_alarm?useUnicode=true&characterEncoding=utf8&autoReconnect=true&rewriteBatchedStatements=TRUE, testWhileIdle true, idle millis 9005, minIdle 5, poolingCount 0, timeBetweenEvictionRunsMillis 60000, lastValidIdleMillis 9005, driver com.mysql.jdbc.Driver, exceptionSorter com.alibaba.druid.pool.vendor.MySqlExceptionSorter
+[ERROR][2020-05-10T03:39:02.353+0800][com.lydia.biz.event.kafka.KafkaEvent:61:pool-9-thread-2]_undef||traceid=||spanid=0a81b20660b6b8e0||cspanid=||hintCode=0||hintContent=||_msg=topic=iov_alarm_stream消费异常 error=java.lang.OutOfMemoryError: Java heap space
+    at com.jayway.jsonpath.internal.Utils.concat(Utils.java:73)
+    at com.jayway.jsonpath.internal.path.PathToken.handleObjectProperty(PathToken.java:43)
+    at com.jayway.jsonpath.internal.path.PropertyPathToken.evaluate(PropertyPathToken.java:79)
+    at com.jayway.jsonpath.internal.path.RootPathToken.evaluate(RootPathToken.java:62)
+    at com.jayway.jsonpath.internal.path.CompiledPath.evaluate(CompiledPath.java:53)
+    at com.jayway.jsonpath.internal.path.CompiledPath.evaluate(CompiledPath.java:61)
+    at com.jayway.jsonpath.JsonPath.read(JsonPath.java:187)
+    at com.jayway.jsonpath.internal.JsonContext.read(JsonContext.java:102)
+    at com.jayway.jsonpath.internal.JsonContext.read(JsonContext.java:85)
+    at com.lydia.biz.processor.FilterProcessor.filter(FilterProcessor.java:24)
+    at com.lydia.biz.event.factory.EventProcessorFactory.process(EventProcessorFactory.java:61)
+    at com.lydia.biz.event.kafka.KafkaEvent.onConsume(KafkaEvent.java:74)
+    at com.lydia.biz.event.kafka.KafkaEvent.lambda$null$21(KafkaEvent.java:58)
+    at com.lydia.biz.event.kafka.KafkaEvent$$Lambda$348/717312201.run(Unknown Source)
+    at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)
+    at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+    at java.lang.Thread.run(Thread.java:748)
+```
+
+为了明天早上的任务正常，我尝试将服务从3台机器扩容到5台，此时2020-05-10 01:05:53。
+
+# 5.10号
+早上起来发现还是不行，通过火焰图判断可能是连接数据库的一个查询压力过大，将该方法加redis缓存10分钟，目前服务运行观察2个小时后，还是出现了问题。
+
+然后周末ing，我还在被这个问题困扰，突然一个同事问我内存多大。
+我才想起，之前我的服务扩容到5台，但是我单机的配置从4 core - 8Gi扩到8 core - 16Gi，但是我代码配置还停留在这样。。
+```
+JVM_ARGS="-Xms2g -Xmx2g -server -XX:+UseConcMarkSweepGC -XX:MaxTenuringThreshold=15 -XX:+UseParNewGC -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:+PrintGCDetails -Xloggc:/home/lydia/data1/log/gc.log -Duser.timezone=GMT+8 -Djavax.servlet.request.encoding=UTF-8 -Dfile.encoding=UTF-8 -Duser.language=zh_CN -Dsun.jnu.encoding=UTF-8"
+```
+马上意识到问题，调整到 -Xms8g -Xmx8g。我以为这样就结束了，但是我还是太年轻了。1-2个小时服务还是撑不住了，但是我开始思考内存的配置。9号的dump文件没法看了，我开始重视7号dump文件。
+
+![image](http://note.youdao.com/yws/res/4611/0314666683A4426693454DD38363216B)
+
+![image](http://note.youdao.com/yws/res/4609/FD7E0E9283524180A85E46576FEF5631)
+
+![image](http://note.youdao.com/yws/res/4610/58BEAF5653674350A585AE8E858B6331)
+
+看到这里，我终于定位到占内存的代码出处了。下面是我错误优化的代码，如下：
+
+```
+手残优化后
+@Override
+public void startConsume() {
+    getConsumer().subscribe(Lists.newArrayList(topic));
+    ExecutorService executorService = Executors.newFixedThreadPool(2);
+    executorService.execute(() -> {
+        while (true) {
+            ConsumerRecords<String, String> records = consumer.poll(1000);
+            for (ConsumerRecord<String, String> record : records) {
+                executorService.submit(() -> {
+                    try {
+                        BaseData baseData = new BaseData();
+                        baseData.setChannel(topic);
+                        baseData.setKey(record.key());
+                        baseData.setOffset(record.offset());
+                        baseData.setValue(record.value().getBytes());
+                        onConsume(baseData);
+                    } catch (Throwable e) {
+                        //TODO print  your error,特别注意这里的poll 可能因为网络问题等原因发生异常,不能catch到异常后就close KafkaConsumer实例,否则无法继续消费
+                        log.error(LogBuilders.generalLog("topic=%s消费异常 error=%s", topic, ExceptionUtils.getStackTrace(e)));
+                    }
+                });
+            }
+        }
+    });
+}
+```
+对比下优化前的代码，真的是不能为了优化而优化，需要真的确保自己是优化了
+
+```
+手残优化前
+ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(10, 20, 1000, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(100), new ThreadPoolExecutor.CallerRunsPolicy());
+ExecutorService executorService = TtlExecutors.getTtlExecutorService(threadPoolExecutor);
+
+@Override
+public void startConsume() {
+    getConsumer().subscribe(Lists.newArrayList(topic));
+    new Thread(new Runnable() {
+        @Override
+        public void run() {
+            while (true) {
+                ConsumerRecords<String, String> records = consumer.poll(1000);
+                for (ConsumerRecord<String, String> record : records) {
+                    executorService.submit(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                BaseData baseData = new BaseData();
+                                baseData.setChannel(topic);
+                                baseData.setKey(record.key());
+                                baseData.setOffset(record.offset());
+//                                    eventData.setTag();
+                                baseData.setValue(record.value().getBytes());
+                                onConsume(baseData);
+                            } catch (Throwable e) {
+                                //TODO print  your error,特别注意这里的poll 可能因为网络问题等原因发生异常,不能catch到异常后就close KafkaConsumer实例,否则无法继续消费
+                                log.error(LogBuilders.generalLog("topic=%s消费异常 error=%s", topic, ExceptionUtils.getStackTrace(e)));
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    }).start();
+}
+```
+终于，世界安静了。记录这次的历程...
+
+![image](http://note.youdao.com/yws/res/4618/E622AA758DA4413AB62D3936D5523461)
+
+# 参考文档
+[一次频繁Full GC的排查过程](https://blog.csdn.net/u012422829/article/details/78154495)
+
+[关于施用full gc频繁的分析及解决](https://my.oschina.net/goldwave/blog/168516)
+
+[GC Allocation Failures](https://medium.com/@technospace/gc-allocation-failures-42c68e8e5e04)
+
+[GC(Allocation Failure)引发的一些JVM知识点梳理](https://blog.csdn.net/zc19921215/article/details/83029952)
+
+[频繁GC (Allocation Failure)及young gc时间过长分析](https://juejin.im/post/5a9b811a6fb9a028e46e1c88)
+
+[内部线上系统的容量评估方法](https://www.infoq.cn/article/w9bB82G4Efeuwr7GGVsb)
+
+[storm 反压机制](https://zhuanlan.zhihu.com/p/38157397)
