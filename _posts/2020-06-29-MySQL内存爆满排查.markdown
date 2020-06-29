@@ -1,0 +1,141 @@
+---
+layout:     post
+title:      "MySQL内存爆满排查"
+subtitle:   "尘埃落定之前..."
+date:       2020-06-29
+author:     "Lydia"
+header-img: "img/post-bg-mysql.jpg"
+catalog: true
+tags:
+    - MySQL
+---
+
+### 查看数据路径
+
+```
+mysql> show variables like '%max_connections%';
+```
+
+| Variable_name   | Value | 含义 |
+|--|--|--|
+| max_connections | 300   | 最大链接数是300 |
+| datadir | /var/lib/mysql | 数据盘路径 |
+
+### 查看磁盘情况
+
+1. 整体
+
+```
+[root@34c532800788 ~]# df -h
+Filesystem            Size  Used Avail Use% Mounted on
+rootfs                100G  100G   20K 100% /
+/dev/mapper/docker-253:3-805306496-08f0764bbef83add377b1c00c657f78a28b60f6ad0fbd3211c1b5e8cb3362bc5
+                      100G  100G   20K 100% /
+tmpfs                 126G     0  126G   0% /dev
+tmpfs                 126G     0  126G   0% /sys/fs/cgroup
+/dev/mapper/docker-docker
+                      1.5T  130G  1.4T   9% /etc/resolv.conf
+/dev/mapper/docker-docker
+                      1.5T  130G  1.4T   9% /etc/hostname
+/dev/mapper/docker-docker
+                      1.5T  130G  1.4T   9% /etc/hosts
+shm                    64M     0   64M   0% /dev/shm
+tmpfs                 126G     0  126G   0% /proc/kcore
+tmpfs                 126G     0  126G   0% /proc/timer_stats
+tmpfs                 126G     0  126G   0% /proc/sched_debug
+```
+
+2. 指定目录
+
+   df -h /**/
+
+   ```
+   [root@34c532800788 ~]# df -h /var/lib/mysql/
+   Filesystem            Size  Used Avail Use% Mounted on
+   /dev/mapper/docker-253:3-805306496-08f0764bbef83add377b1c00c657f78a28b60f6ad0fbd3211c1b5e8cb3362bc5
+                         100G  100G   20K 100% /
+   ```
+
+可以看到磁盘满了，我们进一步看下占用情况
+
+```
+cd /var/lib/mysql
+[root@34c532800788 mysql]# du -sh *
+304M	db1
+5.7G	db2
+2.4M	analysis
+4.0K	auto.cnf
+4.0K	ca-key.pem
+4.0K	ca.pem
+4.0K	client-cert.pem
+4.0K	client-key.pem
+16K	ib_buffer_pool
+332M	ibdata1
+48M	ib_logfile0
+48M	ib_logfile1
+76M	ibtmp1
+20K	industrial_internet
+305M	local
+21M	mysql
+0	mysql.sock
+4.0K	mysql.sock.lock
+1.1M	performance_schema
+30M	db3
+4.0K	private_key.pem
+4.0K	public_key.pem
+504K	risk_credit_dev
+93M	db4
+4.0K	server-cert.pem
+4.0K	server-key.pem
+676K	sys
+```
+
+### 查看数据库表情况
+
+可以看到db2占用大量空间，我们再针对db2看下文件占用情况
+
+```
+mysql> SELECT table_name AS "Table Name", ROUND(((data_length + index_length) / 1024 / 1024), 2) AS "Size in (MB)" FROM information_schema.TABLES WHERE table_schema = "db2" ORDER BY (data_length + index_length) DESC;
++------------------------------------------------+--------------+
+| Table Name                                     | Size in (MB) |
++------------------------------------------------+--------------+
+| scheme1                     |      1085.00 |
+| scheme2               |       750.50 |
+| scheme3                     |       324.73 |
+| scheme4                            |       189.31 |
+| scheme5                               |       168.27 |
+...
+```
+
+如此到这里解决方案很明显了，drop table...
+
+### 查看进程列表[附带，本次问题不涉及]
+
+查看当前处于连接未关闭状态的进程列表
+
+```
+mysql> show full processlist;
+```
+
+| Id     | User | Host                 | db              | Command | Time  | State    | Info                  |
+| --| --|--|--|--|--|--|--|
+|  80341 | root | ip1:port1 | db1         | Sleep   |    15 |          | NULL                  |
+| 325797 | root | Ip2:port2 | db1        | Sleep   |    21 |          | NULL                  |
+| 479337 | root | Ip2:port2 | db1        | Sleep   |   613 |          | NULL                  |
+| 481856 | root | Ip2:port2 | db2 | Sleep   | 11560 |          | NULL                  |
+
+### 查看状态变量[附带，本次问题不涉及]
+
+```
+show status;
+show status like ‘%变量名称%’;
+```
+此处不涉及，待续...
+
+### 参考
+
+[如何在Linux系统查看MySQL数据库容量](https://www.daehub.com/archives/5132.html)
+
+[MySQL查看数据库表容量大小](https://blog.csdn.net/fdipzone/article/details/80144166)
+
+[linux查看磁盘使用情况命令](https://blog.csdn.net/achenyuan/article/details/78674102)
