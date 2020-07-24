@@ -4,7 +4,7 @@ title:      "数据结构与算法"
 subtitle:   "觉知此事要躬行..."
 date:       2020-07-24
 author:     "Lydia"
-header-img: "img/post-bg-algorithm.jpeg"
+header-img: "img/post-bg-algorithm.jpg"
 catalog: true
 tags:
     - 面试 数据结构与算法
@@ -160,7 +160,7 @@ def backtrack(路径, 选择列表):
 * 图论：最短路径、最小生成树
 * 动态规划：背包问题、最长子序列
 
-### 遍历
+#### 遍历
 关注父节点顺序
 - 前序遍历：先输出父节点，在遍历左子树和右子树（中左右）
 - 中序遍历：先输出左子树，再输出父节点，再遍历右子树（左中右）

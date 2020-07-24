@@ -4,7 +4,7 @@ title:      "2020面试总结"
 subtitle:   "觉知此事要躬行..."
 date:       2020-07-24
 author:     "Lydia"
-header-img: "img/post-bg-interview.jpeg"
+header-img: "img/post-bg-interview.jpg"
 catalog: true
 tags:
     - 面试 数据结构与算法
