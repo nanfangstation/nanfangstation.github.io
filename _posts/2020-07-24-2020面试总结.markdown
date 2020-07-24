@@ -7,7 +7,8 @@ author:     "Lydia"
 header-img: "img/post-bg-interview.jpg"
 catalog: true
 tags:
-    - 面试 数据结构与算法
+    - 面试
+    - 数据结构与算法
 ---
 
 # 总结
@@ -41,11 +42,13 @@ tags:
 
 > 打勾表示我个人面试经历（工作经验4年）出现过，其他未出现过最好也准备下。不同工作经验考察点也可能不一样，需要根据实际情况调整。
 
-![Java技能图谱](http://blog.jeeqb.com/static/upload/20180424/-pPedLQdA4rfd4MEK8lg8uzL.jpg)
-
 # 链接
 
+[01-数据结构与算法](https://nanfangstation.github.io/2020/07/24/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/)
 
+最后附一张Java技能图谱。
+
+![Java技能图谱](http://blog.jeeqb.com/static/upload/20180424/-pPedLQdA4rfd4MEK8lg8uzL.jpg)
 
 # 参考
 
