@@ -1,0 +1,58 @@
+---
+layout:     post
+title:      "2020面试总结"
+subtitle:   "觉知此事要躬行..."
+date:       2020-07-24
+author:     "Lydia"
+header-img: "img/post-bg-interview.jpeg"
+catalog: true
+tags:
+    - 面试 数据结构与算法
+---
+
+# 总结
+
+保密...
+
+# 计划
+- [x] 数据结构与算法
+- [ ] 设计模式
+- [x] Java基础
+- [x] Java集合
+- [x] 并发
+- [x] JVM
+- [ ] Spring
+- [x] Mybatis
+- [x] 缓存
+- [x] 数据库
+- [x] NoSQL
+- [x] 消息队列
+- [x] RPC-Dubbo
+- [x] Tomcat
+- [x] Zookeeper
+- [x] Netty
+- [x] 负载均衡
+- [ ] 一致性算法
+- [ ] 网络
+- [ ] 微服务
+- [x] 系统设计
+- [x] 操作系统
+- [x] leetcode
+
+> 打勾表示我个人面试经历（工作经验4年）出现过，其他未出现过最好也准备下。不同工作经验考察点也可能不一样，需要根据实际情况调整。
+
+![Java技能图谱](http://blog.jeeqb.com/static/upload/20180424/-pPedLQdA4rfd4MEK8lg8uzL.jpg)
+
+# 链接
+
+
+
+# 参考
+
+[史上最全阿里 Java 面试题总结](https://www.jianshu.com/p/f53b9d349c66)
+
+[常见性能优化策略的总结](https://tech.meituan.com/2016/12/02/performance-tunning.html)
+
+[如何在阿里技术面试中脱颖而出？（内部资料）](https://developer.aliyun.com/article/574226)
+
+[【2020Java最新学习路线】写了很久，这是一份最适合普通大众、科班、非科班的路线](https://segmentfault.com/a/1190000021886650)
