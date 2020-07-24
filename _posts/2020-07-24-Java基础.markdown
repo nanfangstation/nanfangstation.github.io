@@ -1,0 +1,415 @@
+---
+layout:     post
+title:      "Java基础"
+subtitle:   "觉知此事要躬行..."
+date:       2020-07-24
+author:     "Lydia"
+header-img: "img/post-bg-design.jpg"
+catalog: true
+tags:
+    - 面试
+    - Java
+---
+
+### 参考
+[Java基础知识面试题（2020最新版）](https://thinkwon.blog.csdn.net/article/details/104390612)
+
+[史上最全阿里 Java 面试题总结](https://www.jianshu.com/p/f53b9d349c66)
+
+---
+
+**JAVA基础**
+
+1. JAVA中的几种基本数据类型是什么，各自占用多少字节。
+
+byte>short>int>long
+
+boolean>char>float>double
+
+- 1Byte=8bit
+- 1KB=1024Byte(字节)=8*1024bit
+- 1MB=1024KB
+- 1GB=1024MB
+- 1TB=1024GB
+
+2. String类能被继承吗，为什么。
+
+不可以，因为String类有final修饰符，而final修饰的类是不能被继承的，实现细节不允许改变。
+
+根据程序上下文环境，Java关键字final有“这是无法改变的”或者“终态的”含义，它可以修饰非抽象类、非抽象类成员方法和变量。你可能出于两种理解而需要阻止改变：==设计或效率==。
+
+- final类不能被继承，没有子类，final类中的方法默认是final的。
+- final方法不能被子类的方法覆盖，但可以被继承。
+- final成员变量表示常量，只能被赋值一次，赋值后值不再改变。
+- final不能用于修饰构造方法。
+
+注意：父类的private成员方法是不能被子类方法覆盖的，因此private类型的方法默认是final类型的。
+
+如果一个类不允许其子类覆盖某个方法，则可以把这个方法声明为final方法。
+
+
+使用final方法的原因有二：
+- 第一、把方法锁定，防止任何继承类修改它的意义和实现。
+- 第二、高效。编译器在遇到调用final方法时候会转入内嵌机制，大大提高执行效率。
+
+![img](https://img-blog.csdn.net/20180906132649986?watermark/2/text/aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3poYW5neXViaXNob3VsaW4=/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70)
+
+3. String，Stringbuffer，StringBuilder的区别。
+
+- String 字符串常量
+- StringBuffer 字符串变量（线程安全）
+- StringBuilder 字符串变量（非线程安全）
+
+[String,StringBuffer与StringBuilder的区别](https://blog.csdn.net/rmn190/article/details/1492013)
+
+4. ArrayList和LinkedList有什么区别。
+
+   1. ArrayList是实现了基于动态数组的数据结构，LinkedList基于链表的数据结构。
+   2. 对于随机访问get和set，ArrayList觉得优于LinkedList，因为LinkedList要移动指针。
+   3. 对于新增和删除操作add和remove，LinedList比较占优势，因为ArrayList要移动数据。
+
+5. 讲讲类的实例化顺序，比如父类静态数据，构造函数，字段，子类静态数据，构造函数，字
+    段，当new的时候，他们的执行顺序。
+
+   类加载器实例化时进行的操作步骤（加载–>连接->初始化）。 
+   1. 父类静态变量、 
+   2. 父类静态代码块、 
+   3. 子类静态变量、 
+   4. 子类静态代码块、 
+   5. 父类非静态变量（父类实例成员变量）、 
+   6.  ==父类构造函数==、 
+   7. 子类非静态变量（子类实例成员变量）、 
+   8. ==子类构造函数==。 
+
+6. 用过哪些Map类，都有什么区别，HashMap是线程安全的吗,并发下使用的Map是什么，他们内部原理分别是什么，比如存储方式，hashcode，扩容，默认容量等。
+
+HashMap、HashTable、LinkedHashMap和TreeMap。
+
+**HashMap**
+
+==HashMap 容器初始化的容量为 16，默认负载因子为 0.75，树化阈值为 8，反树化阈值为 6，最小的树化容量为 64==。
+
+HashMap 是一个最常用的Map，它根据键的HashCode值存储数据，根据键可以直接获取它的值，具有很快的访问速度。
+遍历时，取得数据的顺序是完全随机的。
+
+HashMap最多只允许一条记录的键为Null；允许多条记录的值为 Null
+
+HashMap不支持线程的同步，是非线程安全的，即任一时刻可以有多个线程同时写HashMap，可能会导致数据的不一致。如果需要同步，可以用 Collections和synchronizedMap方法使HashMap具有同步能力，或者使用ConcurrentHashMap。
+
+==为什么用的是红黑树，而不是 AVL 树==。
+
+要回答这个问题就要回到这两种数据结构的特点上面。红黑树的查询性能略微逊色于 AVL 树，因为它比 avl 树会稍微不平衡最多一层，也就是说红黑树的查询性能只比相同内容的 avl 树最多多一次比较，但是，红黑树在插入和删除上完爆 avl 树，avl 树每次插入删除会进行大量的平衡度计算，而红黑树为了维持红黑性质所做的红黑变换和旋转的开销，相较于 avl 树为了维持平衡的开销要小得多。所以，对于 HashMap 这种频繁读写的数据结构，选择红黑树相比 AVL 树是更好的选择。
+
+**Hashtable**
+
+Hashtable与HashMap类似，它继承自Dictionary类，不同的是：
+
+它不允许记录的键或者值为空。
+
+它支持线程的同步，即任一时刻只有一个线程能写Hashtable，因此也导致了 Hashtable在写入时会比较慢。
+
+**LinkedHashMap**
+
+LinkedHashMap保存了记录的插入顺序，在用Iterator遍历LinkedHashMap时，先得到的记录肯定是先插入的。在遍历的时候会比HashMap慢，不过有种情况例外，当HashMap容量很大，实际数据较少时，遍历起来可能会比LinkedHashMap慢，因为LinkedHashMap的遍历速度只和实际数据有关，和容量无关，而HashMap的遍历速度和容量有关。
+
+**TreeMap**
+
+TreeMap实现SortMap接口，能够把它保存的记录根据键排序，默认是按键值的升序排序，也可以指定排序的比较器，当用Iterator 遍历TreeMap时，得到的记录是排过序的。
+
+**区别**
+
+一般情况下，我们用的最多的是HashMap，HashMap里面存入的键值对在取出的时候是随机的，它根据键的HashCode值存储数据，根据键可以直接获取它的值，具有很快的访问速度。在Map中插入、删除和定位元素，HashMap 是最好的选择。
+
+TreeMap取出来的是排序后的键值对。但如果要按自然顺序或自定义顺序遍历键，那么TreeMap会更好。
+
+LinkedHashMap是HashMap的一个子类，如果需要输出的顺序和输入的相同，那么用LinkedHashMap可以实现，它还可以按读取顺序来排列，像连接池中可以应用。
+
+7. JAVA8的ConcurrentHashMap为什么放弃了分段锁，有什么问题吗，如果你来设计，你如何设计。
+
+ConcurrentHashMap 1.8 相比 1.7的话，主要改变为：
+
+1. 去除 Segment + HashEntry + Unsafe 的实现，
+
+    改为 Synchronized + CAS + Node + Unsafe 的实现
+
+    其实 Node 和 HashEntry 的内容一样，但是HashEntry是一个内部类。
+
+    用 Synchronized + CAS 代替 Segment ，这样锁的粒度更小了，并且不是每次都要加锁了，CAS尝试失败了在加锁。
+
+2. put()方法中 初始化数组大小时，1.8不用加锁，因为用了个 sizeCtl 变量，将这个变量置为-1，就表明table正在初始化。
+
+
+[ConCurrentHashMap 1.7 和 1.8 的区别](https://www.jianshu.com/p/933289f27270)
+
+[java8的ConcurrentHashMap为何放弃分段锁，为什么要使用CAS+Synchronized取代Segment+ReentrantLock](https://www.cnblogs.com/hi3254014978/p/12335100.html)
+
+[Java集合--ConcurrentMap](https://www.jianshu.com/p/8f7b2cd34c47)
+
+[解读Java8中ConcurrentHashMap是如何保证线程安全的](https://juejin.im/post/5ca89afa5188257e1d4576ff)
+
+8. 有没有有顺序的Map实现类，如果有，他们是怎么保证有序的。
+
+   Hashmap和Hashtable 都不是有序的。
+
+   TreeMap和LinkedHashmap都是有序的。（TreeMap默认是key升序，LinkedHashmap默认是数据插入顺序）
+
+   TreeMap是基于比较器Comparator来实现有序的。
+
+   LinkedHashmap是基于链表来实现数据插入有序的。
+
+9. 抽象类和接口的区别，类可以继承多个类么，接口可以继承多个接口么,类可以实现多个接口么。
+
+   1、接口可以继承接口，抽象类不可以继承接口，但可以实现接口。
+
+   2、抽象类可以继承实体类。抽象类可以实现(implements)接口，抽象类是否可继承实体类，但前提是实体类必须有明确的构造函数。
+
+   3.抽象类可以继承实体类，就是因为抽象类的可以继承性和有方法。
+
+   4、一个接口可以继承多个接口. interface C extends A, B {}是可以的. 一个类可以实现多个接口: class D implements A,B,C{} 但是一个类只能继承一个类,不能继承多个类 class B extends A{} 在继承类的同时,也可以继承接口: class E extends D implements A,B,C{} 这也正是选择用接口而不是抽象类的原因。
+
+10. 继承和聚合的区别在哪。
+
+    继承指的是一个类继承另外的一个类的功能，并可以增加它自己的新功能的能力，继承是类与类或者接口与接口之间最常见的关系；在Java中此类关系通过关键字extends明确标识。
+
+    聚合指的是聚合体现的是整体与部分、拥有的关系，此时整体与部分之间是可分离的，他们可以具有各自的生命周期；比如计算机与CPU、公司与员工的关系等；
+
+    [重新认识java（四） — 组合、聚合与继承的爱恨情仇](https://blog.csdn.net/qq_31655965/article/details/54645220)
+
+11. IO模型有哪些，讲讲你理解的nio ，他和bio，aio的区别是啥，谈谈reactor模型。
+
+    [Java进阶（五）Java I/O模型从BIO到NIO和Reactor模式](http://www.jasongj.com/java/nio_reactor/)
+
+    [BIO与NIO、AIO的区别(这个容易理解)](https://blog.csdn.net/skiof007/article/details/52873421)
+
+12. 反射的原理，反射创建类实例的三种方式是什么。
+
+    所谓的反射机制就是java语言在运行时拥有一项自观的能力。通过这种能力可以彻底的了解自身的情况为下一步的动作做准备。下面具体介绍一下java的反射机制。这里你将颠覆原来对java的理解。 Java的反射机制的实现要借助于4个类：class，Constructor，Field，Method；其中class代表的时类对 象，Constructor－类的构造器对象，Field－类的属性对象，Method－类的方法对象。通过这四个对象我们可以粗略的看到一个类的各个组 成部分。
+
+    在 Java API 中，提供了获取 Class 类对象的三种方法：
+
+    第一种，使用 Class.forName 静态方法。
+
+    前提：已明确类的全路径名。
+
+    第二种，使用 .class 方法。
+
+    说明：仅适合在编译前就已经明确要操作的 Class
+
+    第三种，使用类对象的 getClass() 方法。
+
+    适合有对象示例的情况下
+
+    **获取对象实例**
+
+    - 直接用字节码文件获取对应实例
+    - 有带参数的构造函数的类，先获取到其构造对象，再通过该构造方法类获取实例
+
+    ```
+    // 调用无参构造器 ，若是没有，则会报异常
+    Object o = clazz.newInstance();　　
+    
+    / /获取构造函数类的对象
+    Constroctor constroctor = clazz.getConstructor(String.class,Integer.class); /
+    // 使用构造器对象的newInstance方法初始化对象
+    Object obj = constroctor.newInstance("龙哥", 29); 
+    ```
+
+    
+
+13. 反射中，Class.forName和ClassLoader区别 。
+
+    **在java中Class.forName()和ClassLoader都可以对类进行加载。**
+
+    **区别：**
+
+    （1）Class.forName除了将类的.class文件加载到jvm中之外，还会对类进行解释，执行类中的static块。
+
+    （2）而classloader只干一件事情，就是将.class文件加载到jvm中，不会执行static中的内容，只有在newInstance才会去执行static块。
+
+    \#Class.forName(name,initialize,loader)带参数也可控制是否加载static块。并且只有调用了newInstance()方法采用调用构造函数，创建类的对象。
+
+    ------
+
+    **ClassLoader就是遵循双亲委派模型最终调用启动类加载器的类加载器，实现的功能是“通过一个类的全限定名来获取描述此类的二进制字节流”，获取到二进制流后放到JVM中。Class.forName()方法实际上也是调用的CLassLoader来实现的。**
+
+    [反射中，Class.forName和ClassLoader区别](https://www.jianshu.com/p/2dbfec55c987)
+
+14. 描述动态代理的几种实现方式，分别说出相应的优缺点。
+
+    jdk动态代理是由java内部的反射机制来实现的，cglib动态代理底层则是借助asm来实现的。
+
+    总的来说，反射机制在生成类的过程中比较高效，而asm在生成类之后的相关执行过程中比较高效（可以通过将asm生成的类进行缓存，这样解决asm生成类过程低效问题）。还有一点必须注意：jdk动态代理的应用前提，必须是目标类基于统一的接口。如果没有上述前提，jdk动态代理不能应用。由此可以看出，jdk动态代理有一定的局限性，cglib这种第三方类库实现的动态代理应用更加广泛，且在效率上更有优势。
+
+    [描述动态代理的几种实现方式 分别说出相应的优缺点]([http://xzc.fun/w/index.php?title=%E6%8F%8F%E8%BF%B0%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86%E7%9A%84%E5%87%A0%E7%A7%8D%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F_%E5%88%86%E5%88%AB%E8%AF%B4%E5%87%BA%E7%9B%B8%E5%BA%94%E7%9A%84%E4%BC%98%E7%BC%BA%E7%82%B9](http://xzc.fun/w/index.php?title=描述动态代理的几种实现方式_分别说出相应的优缺点))
+
+15. 动态代理与cglib实现的区别。
+
+    1. jdk动态代理生成的代理类和委托类实现了相同的接口；
+    2. cglib动态代理中生成的字节码更加复杂，生成的代理类是委托类的子类，且不能处理被final关键字修饰的方法；
+    3. jdk采用反射机制调用委托类的方法，cglib采用类似索引的方式直接调用委托类方法；
+
+16. 为什么CGlib方式可以对接口实现代理。
+
+CGLib采用的是用创建一个继承实现类的子类，用asm库动态修改子类的代码来实现的，所以可以用传入的类引用执行代理类。
+
+17. final的用途。
+
+    [Final of Java，这一篇差不多了](https://juejin.im/entry/58c4811161ff4b005d94fed2)
+
+18. 写出三种单例模式实现 。
+
+    [单例模式](https://www.runoob.com/design-pattern/singleton-pattern.html)
+
+19. 如何在父类中为子类自动完成所有的hashcode和equals实现？这么做有何优劣。
+
+20. 请结合OO设计理念，谈谈访问修饰符public、private、protected、default在应用设计中的作用。
+
+    OO就是面向对象。
+
+    那面向对象的四大特性就是：
+    抽象 封装 继承 多态
+
+    public>protected>default>private
+
+21. 深拷贝和浅拷贝区别。
+
+    浅拷贝是创建一个新对象，这个对象有着原始对象属性值的一份精确拷贝。如果属性是基本类型，拷贝的就是基本类型的值，如果属性是引用类型，拷贝的就是内存地址 ，所以**如果其中一个对象改变了这个地址，就会影响到另一个对象**。
+
+    深拷贝是将一个对象从内存中完整的拷贝一份出来,从堆内存中开辟一个新的区域存放新对象,且**修改新对象不会影响原对象**。
+
+    [浅拷贝与深拷贝](https://juejin.im/post/5b5dcf8351882519790c9a2e)
+
+22. 数组和链表数据结构描述，各自的时间复杂度。
+
+    [描述](https://blog.csdn.net/riemann_/article/details/87564524)
+
+    1、从逻辑结构角度来看：
+
+    数组必须事先定义固定的长度（元素个数），不能适应数据动态地增减的情况。当数据增加时，可能超出原先定义的元素个数；当数据减少时，造成内存浪费。
+    链表动态地进行存储分配，可以适应数据动态地增减的情况，且可以方便地插入、删除数据项。（数组中插入、删除数据项时，需要移动其它数据项）
+    2、数组引用变量是存放在栈内存中，数组元素是存放在堆内存中，链表元素在堆区；
+
+    3、从内存存储角度来看：
+
+    (静态)数组从栈中分配空间, 对于程序员方便快速,但自由度小。
+    链表从堆中分配空间, 自由度大但申请管理比较麻烦。
+    数组利用下标定位，时间复杂度为O(1)，链表定位元素时间复杂度O(n)；
+    数组插入或删除元素的时间复杂度O(n)，链表的时间复杂度O(1)。
+
+[对象和数组并不是都在堆上分配内存的](https://www.hollischuang.com/archives/2398)
+
+[图解Java数组的内存分配](https://www.jianshu.com/p/4c80a972aedb)
+
+其实，在编译期间，JIT会对代码做很多优化。其中有一部分优化的目的就是==减少内存堆分配压力==，其中一种重要的技术叫做逃逸分析。
+
+==逃逸分析==
+
+逃逸分析(Escape Analysis)是目前Java虚拟机中比较前沿的优化技术。这是一种可以有效减少Java 程序中同步负载和内存堆分配压力的跨函数全局数据流分析算法。通过逃逸分析，Java Hotspot编译器能够分析出一个新的对象的引用的使用范围从而决定是否要将这个对象分配到堆上。
+
+逃逸分析的==基本行为就是分析对象动态作用域==：当一个对象在方法中被定义后，它可能被外部方法所引用，例如作为调用参数传递到其他地方中，称为方法逃逸。
+
+23. error和exception的区别，CheckedException，RuntimeException的区别。
+
+    [Error和Exception的区别](https://www.jianshu.com/p/e8bbee3c1c4a)
+
+24. 请列出5个运行时异常。
+
+    - ClassCastException类转换异常
+    - IllegalArgumentException非法参数异常
+    - IndexOutOfBoundsException数组越界异常
+    - NullPointerException空指针异常
+    - NumberFormatException数字格式异常。
+
+25. 在自己的代码中，如果创建一个java.lang.String类，这个类是否可以被类加载器加载？为什么。
+
+答案是否定的。我们不能实现。为什么呢？我看很多网上解释是说双亲委托机制解决这个问题，其实不是非常的准确。因为双亲委托机制是可以打破的，你完全可以自己写一个classLoader来加载自己写的java.lang.String类，但是你会发现也不会加载成功，具体就是因为针对java.*开头的类，jvm的实现中已经保证了必须由bootstrp来加载。
+
+[参考](https://blog.csdn.net/riemann_/article/details/87653648)
+
+26. 说一说你对java.lang.Object对象中hashCode和equals方法的理解。在什么场景下需要重新实现这两个方法。
+
+    [参考](https://blog.csdn.net/zknxx/article/details/53862572)
+
+27. 在jdk1.5中，引入了泛型，泛型的存在是用来解决什么问题。
+
+泛型主要针对向下转型时所带来的安全隐患，其核心组成是在声明类或接口时，不设置参数或属性的类型。
+
+首先我们要了解：什么是向下转型和向上转型。
+
+- 面向对象的转型只会发生在具有继承关系的父子类中（接口也是继承的一种）
+- 向上转型：其核心目的在于参数的统一上，根本不需要强制类型转换。
+- 向下转型：是为了操作子类定义的特殊功能，需要强制类型转换，可是现在存在的问题是：向下转型其实是一种非常不安全的操作，以为编译的时候，程序不会报错，而在运行的时候会报错，这就是传说中的—迷之报错。
+- 在JDK1.5之后，新增加了泛型的技术，这就将上述向下转型的问题消灭在了萌芽之中。
+- 泛型的核心意义在于：类在进行定义的时候可以使用一个标记，此标记就表示类中属性或者方法以及参数的类型，标记在使用的时候，才会去动态的设置类型。
+
+[在jdk1.5中，引入了泛型，泛型的存在是用来解决什么问题](https://blog.csdn.net/riemann_/article/details/87307558)
+
+28. 这样的a.hashcode() 有什么用，与a.equals(b)有什么关系。
+
+    `==`是运算符，用于比较两个变量是否相等，而equals是Object类的方法，用于比较两个对象是否相等。默认Object类的equals方法是比较两个对象的地址，此时和`==`的结果一样。换句话说：基本类型比较用`==`，比较的是他们的值。默认下，对象用==比较时，比较的是内存地址，如果需要比较对象内容，需要重写equal方法。
+
+    **hashcode**
+    
+    hashcode（）方法提供了对象的hashCode值，是一个native方法，返回的默认值与System.identityHashCode(obj)一致。
+
+    通常这个值是对象头部的一部分二进制位组成的数字，具有一定的标识对象的意义存在，但绝不定于地址。
+
+    作用是：用一个数字来标识对象。比如在HashMap、HashSet等类似的集合类中，如果用某个对象本身作为Key，即要基于这个对象实现Hash的写入和查找，那么对象本身如何实现这个呢？就是基于hashcode这样一个数字来完成的，只有数字才能完成计算和对比操作。
+
+    **hashcode是否唯一**
+    
+    hashcode只能说是标识对象，在hash算法中可以将对象相对离散开，这样就可以在查找数据的时候根据这个key快速缩小数据的范围，但hashcode不一定是唯一的，所以hash算法中定位到具体的链表后，需要循环链表，然后通过equals方法来对比Key是否是一样的。
+
+    **equals与hashcode的关系**
+   
+    equals相等两个对象，则hashcode一定要相等。但是hashcode相等的两个对象不一定equals相等。
+
+29. 有没有可能2个不相等的对象有相同的hashcode。
+
+    1、如果两个对象equals，Java运行时环境会认为他们的hashcode一定相等。
+    2、如果两个对象不equals，他们的hashcode有可能相等。
+    3、如果两个对象hashcode相等，他们不一定equals。
+    4、如果两个对象hashcode不相等，他们一定不equals。
+
+30. Java中的HashSet内部是如何工作的。
+
+    HashSet：
+
+- 实现了Set接口
+- HashSet依赖的数据结构是哈希表
+- 因为实现的是Set接口，所以不允许有重复的值
+- 插入到HashSet中的对象不保证与插入的顺序保持一致。对象的插入是根据它的hashcode
+- HashSet中允许有NULL值
+- HashSet也实现了Searlizable和Cloneable两个接口
+
+    [Java 集合系列16之 HashSet详细介绍(源码解析)和使用示例](https://www.cnblogs.com/skywang12345/p/3311252.html)
+   
+    [参考](https://blog.csdn.net/qq_32575047/article/details/78901492)
+
+31. 什么是序列化，怎么序列化，为什么序列化，反序列化会遇到什么问题，如何解决。
+
+    [java序列化，看这篇就够了](https://juejin.im/post/5ce3cdc8e51d45777b1a3cdf)
+
+    [Java 中的 HashSet，内部是如何工作的？](https://blog.csdn.net/qq_27093465/article/details/78544505)
+
+32. java8的新特性。
+
+- **Lambda 表达式** − Lambda 允许把函数作为一个方法的参数（函数作为参数传递到方法中）。
+
+- **方法引用** − 方法引用提供了非常有用的语法，可以直接引用已有Java类或对象（实例）的方法或构造器。与lambda联合使用，方法引用可以使语言的构造更紧凑简洁，减少冗余代码。
+
+- **默认方法** − 默认方法就是一个在接口里面有了一个实现的方法。
+
+- **新工具** − 新的编译工具，如：Nashorn引擎 jjs、 类依赖分析器jdeps。
+
+- **Stream API** −新添加的Stream API（java.util.stream） 把真正的函数式编程风格引入到Java中。
+
+- **Date Time API** − 加强对日期与时间的处理。
+
+- **Optional 类** − Optional 类已经成为 Java 8 类库的一部分，用来解决空指针异常。
+
+- **Nashorn, JavaScript 引擎** − Java 8提供了一个新的Nashorn javascript引擎，它允许我们在JVM上运行特定的javascript应用。
+
+[干货 | Java8 新特性教程](https://juejin.im/post/5c3d7c8a51882525dd591ac7)
+ 
+[【译】Java 8的新特性—终极版](https://www.jianshu.com/p/5b800057f2d8)
