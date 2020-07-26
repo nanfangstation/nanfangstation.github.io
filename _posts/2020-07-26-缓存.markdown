@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Mybatis"
+title:      "缓存"
 subtitle:   "觉知此事要躬行..."
 date:       2020-07-26
 author:     "Lydia"
@@ -8,20 +8,250 @@ header-img: "img/post-bg-design.jpg"
 catalog: true
 tags:
     - 面试
-    - Mybatis
+    - 缓存
 ---
 
 ## 总结
 
-- Mybatis源码，执行过程
-- 一级缓存、二级缓存
+- 缓存穿透、击穿、雪崩解决方案
+- Redis数据结构底层实现
+- Redis线程模型
 
 ## 参考
 
 [史上最全阿里 Java 面试题总结](https://www.jianshu.com/p/f53b9d349c66)
 
-[MyBatis面试题（2020最新版）](https://thinkwon.blog.csdn.net/article/details/101292950)
+[Redis面试题（2020最新版）](https://thinkwon.blog.csdn.net/article/details/103522351)
 
-[聊聊MyBatis缓存机制）](https://tech.meituan.com/2018/01/19/mybatis-cache.html)
+[缓存那些事](https://tech.meituan.com/2017/03/17/cache-about.html)
 
-[MyBatis视频教程](https://ke.qq.com/course/199779?taid=1162699186834531)
+[高并发系统设计40问-缓存篇](https://time.geekbang.org/column/article/181886)
+
+---
+
+1. 常见的缓存策略有哪些，如何做到缓存(比如redis)与DB里的数据一致性，你们项目中用到了什么缓存系统，如何设计的。
+
+    常见的缓存策略有：
+    
+    - 先进先出策略 FIFO(First In,First Out)
+    - 最少使用策略 LFU(Least Frequently Used)
+    - 最近最少使用策略 LRU(Least Recently Used)
+    
+    [什么是缓存，缓存策略有哪些？](https://blog.csdn.net/qq_39283195/article/details/94328205)
+    
+    [缓存那些事](https://tech.meituan.com/2017/03/17/cache-about.html)
+    
+    [Redis怎么保持缓存与数据库一致性？](https://blog.csdn.net/belalds/article/details/82078009)
+    
+    [如何优雅的设计和使用缓存？](https://juejin.im/post/5b849878e51d4538c77a974a)
+
+2. 如何防止缓存击穿和雪崩。
+
+    [关于【缓存穿透、缓存击穿、缓存雪崩、热点数据失效】问题的解决方案](https://juejin.im/post/5c9a67ac6fb9a070cb24bf34)
+
+3. 缓存数据过期后的更新如何设计。
+
+    [使用缓存的正确姿势](https://juejin.im/post/5af5b2c36fb9a07ac65318bd)
+
+4. redis的list结构相关的操作。
+
+    [Redis数据结构 - list链表](https://blog.csdn.net/Xiejingfa/article/details/50573605)
+
+5. Redis的数据结构都有哪些。
+
+    五大常用数据类型：
+    
+    1、String
+
+    单key，单value，memcached也支持此类型
+
+    Redis最基本的数据类型，一个redis中字符串中最大有512M
+
+    2、Hash
+
+    一个键值对集合
+
+    3、List
+
+    是个链表，linkedList。
+
+    4、Set（集合）
+
+    无序集合，无重复。
+
+    5、Zset（sorted set：有序集合）
+
+    游戏里面用这个数据结构多
+
+    带个double分数。
+
+    [Redis 数据结构详解](https://www.runoob.com/w3cnote/redis-intro-data-structure.html)
+    
+    [Redis中5种数据结构的使用场景介绍](https://segmentfault.com/a/1190000004012214)
+    
+    [深入了解Redis底层数据结构](https://juejin.im/post/5d71d3bee51d453b5f1a04f1)
+
+6. Redis的使用要注意什么，讲讲持久化方式，内存设置，集群的应用和优劣势，淘汰策略等。
+
+    [参考](https://juejin.im/post/5ddb9d83f265da7e1a71f0a3)
+
+    Redis提供两种持久化机制 RDB 和 AOF 机制:
+    
+    1. RDBRedisDataBase)持久化方式：是指用数据集快照的方式半持久化模式)记录 redis 数据库的所有键值对,在某个时间点将数据写入一个临时文件，持久化结束后，用这个临时文件替换上次持久化的文件，达到数据恢复。
+    优点：（1）只有一个文件 dump.rdb，方便持久化。（2）容灾性好，一个文件可以保存到安全的磁盘。（3）性能最大化，fork 子进程来完成写操作，让主进程继续处理命令，所以是 IO最大化。使用单独子进程来进行持久化，主进程不会进行任何 IO 操作，保证了 redis的高性能) （4）相对于数据集大时，比 AOF 的启动效率更高。缺点：数据安全性低。RDB 是间隔一段时间进行持久化，如果持久化之间 redis 发生故障，会发生数据丢失。所以这种方式更适合数据要求不严谨的时候
+    2. AOFAppend-only file)持久化方式： 
+    是指所有的命令行记录以 redis 命令请求协议的格式完全持久化存储)保存为 aof 文件。优点：（1）数据安全，aof 持久化可以配置 appendfsync 属性，有 always，每进行一次命令操作就记录到 aof 文件中一次。（2）通过 append 模式写文件，即使中途服务器宕机，可以通过 redis-check-aof工具解决数据一致性问题。（3）AOF 机制的 rewrite 模式。AOF 文件没被 rewrite 之前（文件过大时会对命令进行合并重写），可以删除其中的某些命令（比如误操作的 flushall）)缺点：（1）AOF 文件比 RDB 文件大，且恢复速度慢。（2）数据集大的时候，比 rdb 启动效率低。
+
+7. redis2和redis3的区别，redis3内部通讯机制。
+
+    集群方式的区别，3采用Cluster，2采用客户端分区方案和代理方案
+    
+    通信过程说明：
+    
+    1） 集群中的每个节点都会单独开辟一个TCP通道， 用于节点之间彼此
+    
+    通信， 通信端口号在基础端口上加10000。
+    
+    2） 每个节点在固定周期内通过特定规则选择几个节点发送ping消息。
+    
+    3） 接收到ping消息的节点用pong消息作为响应。
+
+8. 当前redis集群有哪些玩法，各自优缺点，场景
+。
+
+**单机版**
+
+![image](http://note.youdao.com/yws/res/5756/7894B97D1145465382293BFB6A99DB42)
+
+特点：简单
+
+问题：
+
+- 内存容量有限 
+- 处理能力有限 
+- 无法高可用。
+
+**主从复制**
+
+![image](http://note.youdao.com/yws/res/5754/0462BE5824C04ADD8C2CDAEF4CD56D0B)
+
+Redis 的复制（replication）功能允许用户根据一个 Redis 服务器来创建任意多个该服务器的复制品，其中被复制的服务器为主服务器（master），而通过复制创建出来的服务器复制品则为从服务器（slave）。 
+
+只要主从服务器之间的网络连接正常，主从服务器两者会具有相同的数据，主服务器就会一直将发生在自己身上的数据更新同步 给从服务器，从而一直保证主从服务器的数据相同。
+
+特点：
+
+- master/slave 角色
+- master/slave 数据相同
+- 降低 master 读压力在转交从库
+
+问题：
+
+- 无法保证高可用
+- 没有解决 master 写的压力
+
+**哨兵**
+
+![image](http://note.youdao.com/yws/res/5758/5DBDCDBE9C944FFD84E4FD3F0B45A3CC)
+
+Redis sentinel 是一个分布式系统中监控 redis 主从服务器，并在主服务器下线时自动进行故障转移。其中三个特性：
+- 监控（Monitoring）：    Sentinel  会不断地检查你的主服务器和从服务器是否运作正常。
+- 提醒（Notification）： 当被监控的某个 Redis 服务器出现问题时， Sentinel 可以通过 API 向管理员或者其他应用程序发送通知。
+- 自动故障迁移（Automatic failover）： 当一个主服务器不能正常工作时， Sentinel 会开始一次自动故障迁移操作。
+
+特点：
+
+- 保证高可用
+- 监控各个节点
+- 自动故障迁移
+
+缺点：
+- 主从模式，切换需要时间丢数据
+- 没有解决 master 写的压力
+
+**集群（proxy 型）**
+
+![image](http://note.youdao.com/yws/res/5760/EDB6DB3FC2FE433286319273139F2A4A)
+
+Twemproxy 是一个 Twitter 开源的一个 redis 和 memcache 快速/轻量级代理服务器； Twemproxy 是一个快速的单线程代理程序，支持 Memcached ASCII 协议和 redis 协议。
+
+特点：
+
+- 多种 hash 算法：MD5、CRC16、CRC32、CRC32a、hsieh、murmur、Jenkins
+- 支持失败节点自动删除
+- 后端 Sharding 分片逻辑对业务透明，业务方的读写方式和操作单个 Redis 一致
+
+缺点：
+
+- 增加了新的 proxy，需要维护其高可用。
+- failover 逻辑需要自己实现，其本身不能支持故障的自动转移可扩展性差，进行扩缩容都需要手动干预
+
+**集群（直连型）：**
+
+![image](http://note.youdao.com/yws/res/5762/E28CE9D050424F3F94B096A3E30A62BA)
+
+从redis 3.0之后版本支持redis-cluster集群，Redis-Cluster采用无中心结构，每个节点保存数据和整个集群状态,每个节点都和其他所有节点连接。
+
+特点：
+
+- 无中心架构（不存在哪个节点影响性能瓶颈），少了 proxy 层。
+- 数据按照 slot 存储分布在多个节点，节点间数据共享，可动态调整数据分布。
+- 可扩展性，可线性扩展到 1000 个节点，节点可动态添加或删除。
+- 高可用性，部分节点不可用时，集群仍可用。通过增加 Slave 做备份数据副本
+- 实现故障自动 failover，节点之间通过 gossip 协议交换状态信息，用投票机制完成 Slave到 Master的角色提升。
+
+缺点：
+
+- 资源隔离性较差，容易出现相互影响的情况。
+- 数据通过异步复制,不保证数据的强一致性
+
+[互联网公司面试必问的Redis题目](https://juejin.im/post/5b99d4bce51d450e7a24b66e)
+
+[Redis集群的5种使用方式，各自优缺点分析](https://stor.51cto.com/art/201910/604653.htm)
+
+9. Memcache的原理，哪些数据适合放在缓存中。
+
+    [memcached介绍及原理](https://blog.csdn.net/guugle2010/article/details/40115675)
+
+10. redis和memcached 的内存管理的区别。
+
+![image](http://note.youdao.com/yws/res/5780/A7307EF2B1BF4E7EA013BAFEF8593DD9)
+
+[Redis与Memcached的区别](https://www.jianshu.com/p/23ea6815eca8)
+
+11. Redis的并发竞争问题如何解决，了解Redis事务的CAS操作吗。
+
+    [参考](https://blog.csdn.net/u011277123/article/details/89534199)
+
+12. Redis的选举算法和流程是怎样的。
+
+13. redis的持久化的机制，aof和rdb的区别。
+
+14. redis的集群怎么同步的数据的。
+
+15. 知道哪些redis的优化操作。
+
+16. Reids的主从复制机制原理。
+
+17. Redis的线程模型是什么。
+
+[为什么 Redis 选择单线程模型](https://draveness.me/whys-the-design-redis-single-thread/)
+
+18. 请思考一个方案，设计一个可以控制缓存总体大小的自动适应的本地缓存。
+
+19. 如何看待缓存的使用（本地缓存，集中式缓存），简述本地缓存和集中式缓存和优缺点。
+
+19. 本地缓存在并发使用时的注意事项。
+
+
+20. 如果service还没执行完，分布式锁在 redis 中已经过期了，怎么解决这种问题
+
+只要客户端一旦加锁成功，启动一个watch线程，他是一个后台线程，会每隔10秒检查一下，如果客户端还持有锁key，那么就会不断的延长锁key的生存时间。
+
+[redis 分布式锁的 5个坑](https://www.cnblogs.com/chengxy-nds/p/12750502.html)
+
+[面试还搞不懂redis，快看看这40道面试题](https://juejin.im/post/5ddb9d83f265da7e1a71f0a3)
+
+[既生 Redis 何生 LevelDB ？](https://juejin.im/post/5c22e049e51d45206d12568e)
+
+[2020年11个Redis系列高频面试题，哪些你还不会？](https://juejin.im/post/5e85a933e51d45470245efaf)
