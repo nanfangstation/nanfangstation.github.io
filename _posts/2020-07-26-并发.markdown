@@ -1,0 +1,415 @@
+---
+layout:     post
+title:      "并发"
+subtitle:   "觉知此事要躬行..."
+date:       2020-07-26
+author:     "Lydia"
+header-img: "img/post-bg-design.jpg"
+catalog: true
+tags:
+    - 面试
+    - Java
+---
+
+## 总结
+
+- CAS、AQS是基础
+- 锁升级过程
+- ThreadLocal原理
+
+## 参考
+
+[史上最全阿里 Java 面试题总结](https://www.jianshu.com/p/f53b9d349c66)
+[并发编程面试题（2020最新版）](https://thinkwon.blog.csdn.net/article/details/104863992)
+[从ReentrantLock的实现看AQS的原理及应用](https://tech.meituan.com/2019/12/05/aqs-theory-and-apply.html)
+[【死磕Java并发】—–J.U.C之AQS（一篇就够了）](https://juejin.im/entry/5ae02a7c6fb9a07ac76e7b70)
+[队列同步器（AQS）详解](https://blog.csdn.net/sunxianghuang/article/details/52287968)
+[深入理解AbstractQueuedSynchronizer(AQS)](https://juejin.im/post/5aeb07ab6fb9a07ac36350c8)
+
+happen-before原则 8个
+- 程序次序规则：一个线程内保证语义的串行性
+- volatile变量规则：变量的写先发生于读，保证可见性
+- 锁规则：一个unlock操作先行发生于对同一个锁的lock操作
+- 传递性：操作A先于B，B先于C，则A必先于C
+- 线程启动：Thread对象的start方法先行发生于此线程的每一个动作
+- 线程终止：线程的所有操作都先行发生于对此线程的终结检测（Thread.join()，Thread.isAlive())
+- 线程中断：对线程interrupt方法的调用先行发生于被中断线程的代码检测到中断事件的发生Thread.interrupted()方法检测
+- 线程终结：一个对象的初始化完成（构造函数执行结束）先行发生于它的finalize方法的开始
+
+volatile
+- 保证此变量对所有线程的可见性【每次使用之前都会刷新
+- 禁止指令重排序优化【内存屏障
+
+指令重排是指CPU采用了允许将多条指令不按程序规定的顺序分开发送给各相应电路单元处理。
+
+synchronized有三种应用方式：
+- 作用于实例方法，当前实例加锁，进入同步代码前要获得当前实例的锁；
+- 作用于静态方法，当前类加锁，进去同步代码前要获得当前类对象的锁；
+- 作用于代码块，对括号里配置的对象加锁。
+
+synchronized用的锁存在Java对象头里，Java对象头里的Mark Word默认存储对象的HashCode、分代年龄和锁标记位。在运行期间，Mark Word里存储的数据会随着锁标志位的变化而变化。
+
+---
+
+1. 多线程的几种实现方式，什么是线程安全。
+
+- 第一种方式：继承Thread类
+- 第二种方式：实现Runnable接口
+- 第三种方式：使用内部类的方式
+- 第四种方式：定时器
+- 第五种方式：带返回值的线程实现方式
+- 第六种方式：基于线程池的方式
+- Spring方式：使用Spring来实现多线程
+
+[java多线程的6种实现方式详解](https://blog.csdn.net/king_kgh/article/details/78213576)
+
+2. volatile的原理，作用，能代替锁么。
+
+- 保持内存可见性
+- 防止指令重排
+
+[volatile关键字的作用、原理](https://juejin.im/post/59db333b6fb9a00a69752a39)
+
+volatile加原子操作能取代synchronized和锁吗？答案是否定的。比如需求如果是，在并发环境下判断票数是否大于零，如果大于零就买票。 判断加更新总体是个原子操作。这种情况只能用锁和synchronized。volatile加原子操作解决不了问题。其实想彻底解决并发环境的问题，只 能用synchronized和锁。volatile和原子操作只能在有些特殊的情况下解决一点小问题(比如不加判断直接更新)，当问题变得复杂时，volatile和原子操作就完全不能胜任了。
+
+3. 画一个线程的生命周期状态图。
+
+![image](http://note.youdao.com/yws/res/5312/DCA9530E7FC04BC5AC4235F9BC3A814C)
+
+[画一个线程的生命周期状态图](https://blog.csdn.net/riemann_/article/details/96047519)
+
+4. sleep和wait的区别。
+
+Java中wait和sleep方法的区别：
+
+- wait只能在同步（synchronize）环境中被调用，而sleep不需要。详见Why to wait and notify needs to call from synchronized method
+- 进入wait状态的线程能够被notify和notifyAll线程唤醒，但是进入sleeping状态的线程不能被notify方法唤醒。
+- wait通常有条件地执行，线程会一直处于wait状态，直到某个条件变为真。但是sleep仅仅让你的线程进入睡眠状态。
+- wait方法在进入wait状态的时候会释放对象的锁，但是sleep方法不会。
+- wait方法是针对一个被同步代码块加锁的对象，而sleep是针对一个线程。
+
+5. sleep和sleep(0)的区别。
+
+在线程中，调用sleep（0）可以释放cpu时间，让线程马上重新回到就绪队列而非等待队列，sleep(0)释放当前线程所剩余的时间片（如果有剩余的话），这样可以让操作系统切换其他线程来执行，提升效率。
+
+[Sleep(0)的妙用](https://blog.csdn.net/qiaoquan3/article/details/56281092)
+
+6. Lock与Synchronized的区别 。
+
+|类别|	synchronized|	Lock|
+|-|-|-|
+|存在层次|	Java的关键字，在jvm层面上|	是一个类|
+|锁的释放	|1、以获取锁的线程执行完同步代码，释放锁 2、线程执行发生异常，jvm会让线程释放锁	|在finally中必须释放锁，不然容易造成线程死锁|
+|锁的获取|	假设A线程获得锁，B线程等待。如果A线程阻塞，B线程会一直等待	|分情况而定，Lock有多个锁获取的方式，具体下面会说道，大致就是可以尝试获得锁，线程可以不用一直等待|
+|锁状态|	无法判断|	可以判断|
+|锁类型|	可重入 不可中断 非公平|	可重入 可判断 可公平（两者皆可）|
+|性能|少量同步|大量同步|
+
+7. synchronized的原理是什么，一般用在什么地方(比如加在静态方法和非静态方法的区别，静
+态方法和非静态方法同时执行的时候会有影响吗)，解释以下名词：重排序，自旋锁，偏向锁，轻
+量级锁，可重入锁，公平锁，非公平锁，乐观锁，悲观锁。
+
+java是用字节码指令来控制程序（这里不包括热点代码编译成机器码）。在字节指令中，存在有synchronized所包含的代码块，映射成字节码指令就是增加来两个指令：monitorenter和monitorexit。当一条线程进行执行的遇到monitorenter指令的时候，它会去尝试获得锁，如果获得锁那么锁计数+1（为什么会加一呢，因为它是一个可重入锁，所以需要用这个锁计数判断锁的情况），如果没有获得锁，那么阻塞。当它遇到monitorexit的时候，锁计数器-1，当计数器为0，那么就释放锁。
+
+Synchronized修饰非静态方法，实际上是对调用该方法的对象加锁，俗称“对象锁”。
+
+Synchronized修饰静态方法，实际上是对该类对象加锁，俗称“类锁”。
+
+ 1.对象锁钥匙只能有一把才能互斥，才能保证共享变量的唯一性
+
+    2.在静态方法上的锁，和 实例方法上的锁，默认不是同样的，如果同步需要制定两把锁一样。
+
+    3.关于同一个类的方法上的锁，来自于调用该方法的对象，如果调用该方法的对象是相同的，那么锁必然相同，否则就不相同。比如 new A().x() 和 new A().x(),对象不同，锁不同，如果A的单利的，就能互斥。
+
+    4.静态方法加锁，能和所有其他静态方法加锁的 进行互斥
+
+    5.静态方法加锁，和xx.class 锁效果一样，直接属于类的
+
+[通俗易懂 悲观锁、乐观锁、可重入锁、自旋锁、偏向锁、轻量/重量级锁、读写锁、各种锁及其Java实现！](https://zhuanlan.zhihu.com/p/71156910)
+
+[不可不说的Java“锁”事](https://tech.meituan.com/2018/11/15/java-lock.html)
+
+8. 用过哪些原子类，他们的原理是什么。
+
+Atomic包下包含了12个类，分为4种类型：
+
+- 原子更新基本类型
+- 原子更新数组
+- 原子更新引用
+- 原子更新字段
+
+Unsafe 类是个跟底层硬件CPU指令通讯的复制工具类。
+
+unsafe.compareAndSwapInt(this, valueOffset, expect, update)
+所谓的 CAS，其实是个简称，全称是 Compare And Swap，对比之后交换数据。上面的方法，有几个重要的参数：
+
+（1）this，Unsafe 对象本身，需要通过这个类来获取 value 的内存偏移地址。
+
+（2）valueOffset，value 变量的内存偏移地址。
+
+（3）expect，期望更新的值。
+
+（4）update，要更新的最新值。
+
+如果原子变量中的 value 值等于 expect，则使用 update 值更新该值并返回 true，否则返回 false。
+
+[一文彻底搞懂CAS实现原理](https://zhuanlan.zhihu.com/p/94762520)
+
+9. JUC下研究过哪些并发工具，讲讲原理。
+
+[Java多线程与高并发(四):java.util.concurrent包](https://juejin.im/entry/5b39bc776fb9a00e5c5f9407)
+
+Semaphore用来维护一组有限的资源, 每次申请资源时, 都会递减资源数, 如果资源没了的话, 会阻塞当前线程, 直到有可用的资源为止. 有限的资源可以是: 数据库连接, Socket连接.
+
+CountDownLatch适用于 : 当一个或者多个线程的执行需要等待其他线程执行完后才可以执行的场景.
+
+多个线程需要等待彼此到达一个同步点时, 才继续执行, 这种情况下, 可以用CyclicBarrier. 而且它具有重用行, 可被多次使用, 这点和CountDownLatch不一样, 后者只能被使用一次.
+
+10. 用过线程池吗，如果用过，请说明原理，并说说newCache和newFixed有什么区别，构造函数的各个参数的含义是什么，比如coreSize，maxsize等。
+
+newSingleThreadExecutor返回一个包含单线程的Executor,将多个任务交给此Executor时，这个线程处理完一个任务后接着处理下一个任务，若该线程出现异常，将会有一个新的线程来替代。
+newFixedThreadPool返回一个包含指定数目线程的线程池，如果任务数量多于线程数目，那么没有执行的任务必须等待，直到有任务完成为止。
+newCachedThreadPool根据用户的任务数创建相应的线程来处理，该线程池不会对线程数目加以限制，完全依赖于JVM能创建线程的数量，可能引起内存不足，线程自动回收。
+底层是基于ThreadPoolExecutor实现，借助reentrantlock保证并发。
+coreSize核心线程数，maxsize最大线程数。
+
+ThreadPoolExecutor(int corePoolSize, int maximumPoolSize,
+long keepAliveTime, TimeUnit unit,
+BlockingQueue workQueue,
+RejectedExecutionHandler handler)
+corePoolSize： 线程池维护线程的最少数量
+maximumPoolSize：线程池维护线程的最大数量
+keepAliveTime： 线程池维护线程所允许的空闲时间
+unit： 线程池维护线程所允许的空闲时间的单位
+workQueue： 线程池所使用的缓冲队列
+handler： 线程池对拒绝任务的处理策略
+
+[Java并发编程中四种线程池](https://blog.csdn.net/riemann_/article/details/97617432)
+
+11. 线程池的关闭方式有几种，各自的区别是什么。
+
+Java提供的对ExecutorService的关闭方式有两种，一种是调用其shutdown()方法，另一种是调用shutdownNow()方法。这两者是有区别的。
+
+shutdown:
+1. 调用之后不允许继续往线程池内继续添加线程;
+2. 线程池的状态变为SHUTDOWN状态;
+3. 所有在调用shutdown()方法之前提交到ExecutorSrvice的任务都会执行;
+4. 旦所有线程结束执行当前任务，ExecutorService才会真正关闭。
+
+shutdownNow():
+1. 该方法返回尚未执行的 task 的 List;
+2. 线程池的状态变为STOP状态;
+3. 阻止所有正在等待启动的任务, 并且停止当前正在执行的任务。
+
+简单点来说，就是:
+- shutdown()调用后，不可以再 submit 新的 task，已经 submit 的将继续执行
+- shutdownNow()调用后，试图停止当前正在执行的 task，并返回尚未执行的 task 的 list
+
+[线程池的关闭方式有几种，各自的区别是什么。](https://blog.csdn.net/riemann_/article/details/97621077)
+
+12. 假如有一个第三方接口，有很多个线程去调用获取数据，现在规定每秒钟最多有10个线程同时调用它，如何做到。
+
+```
+ScheduledThreadPoolExecutor 设置定时，进行调度。
+public ScheduledThreadPoolExecutor(int corePoolSize,
+ThreadFactory threadFactory) {
+super(corePoolSize, Integer.MAX_VALUE, 0, TimeUnit.NANOSECONDS,
+new DelayedWorkQueue(), threadFactory);
+}
+```
+
+13. spring的controller是单例还是多例，怎么保证并发的安全。
+
+controller默认是单例的，不要使用非静态的成员变量，否则会发生数据逻辑混乱。
+正因为单例所以不是线程安全的。
+
+    1. 不要在controller中定义成员变量。
+    2. 万一必须要定义一个非静态成员变量时候，则通过注解@Scope(“prototype”)，将其设置为多例模式。
+    3. 在Controller中使用ThreadLocal变量
+
+14. 用三个线程按顺序循环打印abc三个字母，比如abcabcabc。
+
+15. ThreadLocal用过么，用途是什么，原理是什么，用的时候要注意什么。
+
+![image](http://note.youdao.com/yws/res/5385/B8E61616CEB941EBA5169179A05F6E75)
+
+ThreadLocal设计的目的就是为了能够在当前线程中有属于自己的变量，并不是为了解决并发或者共享变量的问题。
+
+主要的应用场景如下：
+
+线程间数据隔离，各线程的 ThreadLocal 互不影响
+方便同一个线程使用某一对象，避免不必要的参数传递
+全链路追踪中的 traceId 或者流程引擎中上下文的传递一般采用 ThreadLocal
+Spring 事务管理器采用了 ThreadLocal
+Spring MVC 的 RequestContextHolder 的实现使用了 ThreadLocal
+
+---
+
+使用弱引用的原因在于，当没有强引用指向 ThreadLocal 变量时，它可被回收，从而避免上文所述 ThreadLocal 不能被回收而造成的内存泄漏的问题。
+
+但是，这里又可能出现另外一种内存泄漏的问题。ThreadLocalMap 维护 ThreadLocal 变量与具体实例的映射，当 ThreadLocal 变量被回收后，该映射的键变为 null，该 Entry 无法被移除。从而使得实例被该 Entry 引用而无法被回收造成内存泄漏。
+
+注：Entry虽然是弱引用，但它是 ThreadLocal 类型的弱引用（也即上文所述它是对 键 的弱引用），而非具体实例的的弱引用，所以无法避免具体实例相关的内存泄漏。
+
+[正确理解Thread Local的原理与适用场景](http://www.jasongj.com/java/threadlocal/)
+
+16. 如果让你实现一个并发安全的链表，你会怎么做。
+
+多线程环境下向链表中安全插入节点的方法：
+
+锁住整个链表。
+使用交替锁。只锁住链表的一部分，链表没有被锁住的部分自由访问。
+
+[java使用交替锁实现线程安全的链表](https://www.jianshu.com/p/b25144920b93)
+
+17. 有哪些无锁数据结构，他们实现的原理是什么。
+
+JAVA中使用了CAS 的类，AtomicXXX类，非阻塞队列ConcurrentLinkedQueue，跳表ConcurrentSkipList。
+
+CAS虽然很高效的解决原子操作，但是CAS仍然存在三大问题。ABA问题，循环时间长开销大和只能保证一个共享变量的原子操作。
+
+18. 讲讲java同步机制的wait和notify。
+
+Obj.wait()，与Obj.notify()必须要与synchronized(Obj)一起使用，也就是wait,与notify是针对已经获取了Obj锁进行操作，从语法角度来说就是Obj.wait(),Obj.notify必须在synchronized(Obj){...}语句块内。从功能上来说wait就是说线程在获取对象锁后，主动释放对象锁，同时本线程休眠。直到有其它线程调用对象的notify()唤醒该线程，才能继续获取对象锁，并继续执行。相应的notify()就是对对象锁的唤醒操作。但有一点需要注意的是notify()调用后，并不是马上就释放对象锁的，而是在相应的synchronized(){}语句块执行结束，自动释放锁后，JVM会在wait()对象锁的线程中随机选取一线程，赋予其对象锁，唤醒线程，继续执行。这样就提供了在线程间同步、唤醒的操作。Thread.sleep()与Object.wait()二者都可以暂停当前线程，释放CPU控制权，主要的区别在于Object.wait()在释放CPU同时，释放了对象锁的控制。
+
+[Java多线程学习（四）等待/通知（wait/notify）机制](https://juejin.im/post/5ab755fc6fb9a028c22aba1f)
+
+19. CAS机制是什么，如何解决ABA问题。
+
+[Java并发：CAS、ABA问题、ABA问题解决方案](https://blog.csdn.net/jingzi123456789/article/details/78004074)
+
+利用版本号比较可以有效解决ABA问题。用AtomicStampedReference/AtomicMarkableReference解决ABA问题。
+
+20. 多线程如果线程挂住了怎么办。
+
+线程的挂起和恢复实现的正确方法是：通过设置标志位，让线程在安全的位置挂起。
+
+[线程挂起、恢复与终止](https://wiki.jikexueyuan.com/project/java-concurrency/thread-hanging.html)
+
+21. countdowlatch和cyclicbarrier的内部原理和用法，以及相互之间的差别(比如countdownlatch的await方法和是怎么实现的)。
+
+- CountDownLatch : 一个线程(或者多个)，等待另外N个线程完成某个事情之后才能执行。   
+- CyclicBarrier        : N个线程相互等待，任何一个线程完成之前，所有的线程都必须等待。
+
+
+- CountDownLatch 是计数器, 线程完成一个就记一个, 就像 报数一样, 只不过是递减的.
+- CyclicBarrier更像一个水闸, 线程执行就想水流, 在水闸处都会堵住, 等到水满(线程到齐)了, 才开始泄流.
+
+await方法，直接调用了AQS的acquireSharedInterruptibly。
+
+```
+public void await() throws InterruptedException {
+    sync.acquireSharedInterruptibly(1);
+}
+
+public final void acquireSharedInterruptibly(int arg)
+        throws InterruptedException {
+    if (Thread.interrupted())
+        throw new InterruptedException();
+    if (tryAcquireShared(arg) < 0)
+        doAcquireSharedInterruptibly(arg);
+}
+
+protected int tryAcquireShared(int acquires) {
+   return (getState() == 0) ? 1 : -1;
+}
+
+private void doAcquireSharedInterruptibly(int arg)
+    throws InterruptedException {
+    final Node node = addWaiter(Node.SHARED);
+    boolean failed = true;
+    try {
+        for (;;) {
+            final Node p = node.predecessor();
+            if (p == head) {
+                int r = tryAcquireShared(arg);
+                if (r >= 0) {
+                    setHeadAndPropagate(node, r);
+                    p.next = null; // help GC
+                    failed = false;
+                    return;
+                }
+            }
+            if (shouldParkAfterFailedAcquire(p, node) &&
+                parkAndCheckInterrupt())
+                throw new InterruptedException();
+        }
+    } finally {
+        if (failed)
+            cancelAcquire(node);
+    }
+}
+```
+首先尝试获取共享锁，实现方式和独占锁类似，由CountDownLatch实现判断逻辑。
+
+返回1代表获取成功，返回-1代表获取失败。如果获取失败，需要调用doAcquireSharedInterruptibly。
+
+doAcquireSharedInterruptibly的逻辑和独占功能的acquireQueued基本相同，阻塞线程的过程是一样的。不同之处：
+
+创建的Node是定义成共享的（Node.SHARED）；
+被唤醒后重新尝试获取锁，不只设置自己为head，还需要通知其他等待的线程。（重点看后文释放操作里的setHeadAndPropagate）
+
+[分析CountDownLatch的实现原理](https://www.jianshu.com/p/7c7a5df5bda6)
+
+22. 对AbstractQueuedSynchronizer了解多少，讲讲加锁和解锁的流程，独占锁和公平锁加锁有什么不同。
+
+[从ReentrantLock的实现看AQS的原理及应用](https://tech.meituan.com/2019/12/05/aqs-theory-and-apply.html)
+
+23. 使用synchronized修饰静态方法和非静态方法有什么区别。
+
+24. 简述ConcurrentLinkedQueue和LinkedBlockingQueue的用处和不同之处。
+
+- 阻塞队列，典型例子是 LinkedBlockingQueue
+
+适用阻塞队列的好处：多线程操作共同的队列时不需要额外的同步，另外就是队列会自动平衡负载，即那边（生产与消费两边）处理快了就会被阻塞掉，从而减少两边的处理速度差距。
+- 非阻塞队列，典型例子是 ConcurrentLinkedQueue
+
+当许多线程共享访问一个公共集合时，ConcurrentLinkedQueue是一个恰当的选择。
+
+- LinkedBlockingQueue 多用于任务队列
+- ConcurrentLinkedQueue 多用于消息队列
+
+[LinkedBlockingQueue 和 ConcurrentLinkedQueue的用法及区别](https://www.jianshu.com/p/1a49293294aa)
+
+25. 导致线程死锁的原因？怎么解除线程死锁。
+
+- 互斥条件：线程要求对所分配的资源进行排他性控制,即在一段时间内某 资源仅为一个进程所占有.此时若有其他进程请求该资源.则请求进程只能等待.
+- 不剥夺条件：进程所获得的资源在未使用完毕之前,不能被其他进程强行夺走,即只能由获得该资源的线程自己来释放（只能是主动释放).
+- 请求和保持条件：线程已经保持了至少一个资源,但又提出了新的资源请求,而该资源已被其他线程占有,此时请求线程被阻塞,但对自己已获得的资源保持不放.
+- 循环等待条件：存在一种线程资源的循环等待链,链中每一个线程已获得的资源同时被链中下一个线程所请求。
+
+解决方案
+
+- 加锁顺序
+- 加锁时限
+- 死锁检测
+
+[导致线程死锁的原因？怎么解除线程死锁](https://blog.csdn.net/riemann_/article/details/99617841)
+
+26. 非常多个线程（可能是不同机器），相互之间需要等待协调，才能完成某种工作，问怎么设计这种协调方案。
+
+27. 用过读写锁吗，原理是什么，一般在什么场景下用。
+
+[读写锁ReadWriteLock的实现原理](https://juejin.im/post/5dc22993f265da4cf77c8ded#heading-9)
+
+28. 开启多个线程，如果保证顺序执行，有哪几种实现方式，或者如何保证多个线程都执行完再拿到结果。
+
+
+1. 使用线程的join方法
+2. 使用主线程的join方法
+3. 使用线程的wait方法
+4. 使用线程的线程池方法
+5. 使用线程的Condition(条件变量)方法
+6. 使用线程的CountDownLatch(倒计数)方法
+7. 使用线程的CyclicBarrier(回环栅栏)方法
+8. 使用线程的Semaphore(信号量)方法
+
+[让线程按顺序执行8种方法](https://cloud.tencent.com/developer/article/1508444)
+
+29. 延迟队列的实现方式，delayQueue和时间轮算法的异同。
+
+[你真的了解延时队列吗(一)](https://juejin.im/post/5b5e52ecf265da0f716c3203)
+
+30. 点击[这里](https://mp.weixin.qq.com/s/0CI9od4DIxRrmOGFJw0SuQ)有一套答案版的多线程试题。 
+
+[个人整理 - Java 后端面试题 - 多线程篇](https://hacpai.com/article/1583379359908)
