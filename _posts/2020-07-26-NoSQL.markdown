@@ -1,0 +1,296 @@
+---
+layout:     post
+title:      "NoSQL"
+subtitle:   "觉知此事要躬行..."
+date:       2020-07-26
+author:     "Lydia"
+header-img: "img/post-bg-design.jpg"
+catalog: true
+tags:
+    - 面试
+    - NoSQL
+---
+
+## 总结
+
+- ElasticSearch倒排索引、全文检索、索引过程、搜索过程
+- HBase rowkey设计
+
+个人项目中频繁使用ES、HBase故只列出这两种情况，其他NoSQL视自己项目情况准备。
+
+## 参考
+
+[史上最全阿里 Java 面试题总结](https://www.jianshu.com/p/f53b9d349c66)
+
+[NoSQL](https://troywu0.gitbooks.io/hadoop/content/nosql.html)
+
+---
+
+### ElasticSearch
+
+1. elasticsearch了解多少，说说你们公司es的集群架构，索引数据大小，分片有多少，以及一些调优手段 。elasticsearch的倒排索引是什么。
+
+ES是基于[Lucene](https://zh.wikipedia.org/wiki/Lucene)构建的开源、分布式、高性能、Restful接口的全文搜索合分析系统。
+
+**功能特点**
+
+- 分布式搜素引擎合数据分析引擎
+- 全文搜索，结构化检索，数据分析
+- 对海量数据近实时的处理
+    
+**应用场景**
+
+- 站点全文检索搜索引擎
+- 实时日志检索系统(ELK)
+- 实时在线分析系统(OLAP)
+- 分布式数据库
+
+结合自己实际情况说明...
+
+仅索引层面调优手段：
+
+1.1、设计阶段调优
+
+1. 根据业务增量需求，采取基于日期模板创建索引，通过roll over API滚动索引；
+2. 使用别名进行索引管理；
+3. 每天凌晨定时对索引做force_merge操作，以释放空间；
+4. 采取冷热分离机制，热数据存储到SSD，提高检索效率；冷数据定期进行shrink操作，以缩减存储；
+5. 采取curator进行索引的生命周期管理；
+6. 仅针对需要分词的字段，合理的设置分词器；
+7. Mapping阶段充分结合各个字段的属性，是否需要检索、是否需要存储等。
+
+1.2、写入调优
+
+1. 写入前副本数设置为0；
+2. 写入前关闭refresh_interval设置为-1，禁用刷新机制；
+3. 写入过程中：采取bulk批量写入；
+4. 写入后恢复副本数和刷新间隔；
+5. 尽量使用自动生成的id。
+
+1.3、查询调优
+
+1. 禁用wildcard；
+2. 禁用批量terms（成百上千的场景）；
+3. 充分利用倒排索引机制，能keyword类型尽量keyword；
+4. 数据量大时候，可以先基于时间敲定索引再检索；
+5. 设置合理的路由机制。
+
+1.4、其他调优
+部署调优，业务调优等。
+
+Elasticsearch 使用一种称为 倒排索引 的结构，它适用于快速的全文搜索。一个倒排索引由文档中所有不重复词的列表构成，对于其中每个词，有一个包含它的文档列表。
+
+倒排索引，相反于一篇文章包含了哪些词，它从词出发，记载了这个词在哪些文档中出现过，由两部分组成——词典和倒排表。
+
+加分项：倒排索引的底层实现是基于：FST（Finite State Transducer）数据结构。
+
+lucene 从 4+版本后开始大量使用的数据结构是 FST。FST 有两个优点：
+
+（1）空间占用小。通过对词典中单词前缀和后缀的重复利用，压缩了存储空间；
+
+（2）查询速度快。O(len(str))的查询时间复杂度。
+
+[倒排索引](https://www.elastic.co/guide/cn/elasticsearch/guide/current/inverted-index.html)
+
+[elasticsearch 倒排索引原理](https://zhuanlan.zhihu.com/p/33671444)
+
+2. 索引数据多了怎么办，如何调优，部署。
+
+    索引数据的规划，应在前期做好规划，正所谓“设计先行，编码在后”，
+
+    这样才能有效的避免突如其来的数据激增导致集群处理能力不足引发的线上客户
+    
+    检索或者其他业务受到影响。
+    
+    如何调优，正如问题 1 所说，这里细化一下：
+    
+    3.1 动态索引层面
+    
+    基于模板+时间+rollover api 滚动创建索引，举例：设计阶段定义：blog 索
+    
+    引的模板格式为：blog_index_时间戳的形式，每天递增数据。
+    
+    这样做的好处：不至于数据量激增导致单个索引数据量非常大，接近于上线 2 的
+    
+    32 次幂-1，索引存储达到了 TB+甚至更大。
+    
+    一旦单个索引很大，存储等各种风险也随之而来，所以要提前考虑+及早避免。
+    
+    3.2 存储层面
+    
+    冷热数据分离存储，热数据（比如最近 3天或者一周的数据），其余为冷数据。
+    
+    对于冷数据不会再写入新数据，可以考虑定期 force_merge 加 shrink 压缩操作，
+    
+    节省存储空间和检索效率。
+    
+    3.3 部署层面
+    
+    一旦之前没有规划，这里就属于应急策略。
+    
+    结合 ES 自身的支持动态扩展的特点，动态新增机器的方式可以缓解集群压力，注
+    
+    意：如果之前主节点等规划合理，不需要重启集群也能完成动态新增的。
+    
+    [elasticsearch 索引数据多了怎么办，如何调优，部署 ?](https://www.cnblogs.com/programb/p/13019985.html)
+
+3. elasticsearch是如何实现master选举的。
+
+    前置前提：
+
+    （1）只有候选主节点（master：true）的节点才能成为主节点。
+    
+    （2）最小主节点数（min_master_nodes）的目的是防止脑裂。
+    
+    核对了一下代码，核心入口为 findMaster，选择主节点成功返回对应 Master，否则返回 null。选举流程大致描述如下：
+    
+    第一步：确认候选主节点数达标，elasticsearch.yml 设置的值
+    
+    discovery.zen.minimum_master_nodes；
+    
+    第二步：比较：先判定是否具备 master 资格，具备候选主节点资格的优先返回；
+    
+    若两节点都为候选主节点，则 id 小的值会主节点。注意这里的 id 为 string 类型。
+    
+    题外话：获取节点 id 的方法。
+
+    [Elasticsearch是如何选举出master的](https://www.nosuchfield.com/2019/03/18/How-Elasticsearch-elected-the-master/)
+
+
+```
+1GET /_cat/nodes?v&h=ip,port,heapPercent,heapMax,id,name
+
+2ip port heapPercent heapMax id name
+```
+
+4. 详细描述一下Elasticsearch索引文档的过程。
+
+    这里的索引文档应该理解为文档写入 ES，创建索引的过程。
+    
+    文档写入包含：单文档写入和批量 bulk 写入，这里只解释一下：单文档写入流程。
+    
+    记住官方文档中的这个图。
+    ![image](http://note.youdao.com/yws/res/5696/59DED7F2343C4F479B5FFE730DAD6381)
+    第一步：客户写集群某节点写入数据，发送请求。（如果没有指定路由/协调节点，请求的节点扮演路由节点的角色。）
+    
+    第二步：节点 1 接受到请求后，使用文档_id 来确定文档属于分片 0。请求会被转到另外的节点，假定节点 3。因此分片 0 的主分片分配到节点 3 上。
+    
+    第三步：节点 3 在主分片上执行写操作，如果成功，则将请求并行转发到节点 1和节点 2 的副本分片上，等待结果返回。所有的副本分片都报告成功，节点 3 将向协调节点（节点 1）报告成功，节点 1 向请求客户端报告写入成功。
+    
+    如果面试官再问：第二步中的文档获取分片的过程？
+    
+    回答：借助路由算法获取，路由算法就是根据路由和文档 id 计算目标的分片 id 的过程。
+    
+    1shard = hash(_routing) % (num_of_primary_shards)
+
+
+5. 详细描述一下Elasticsearch搜索的过程。
+
+![image](http://note.youdao.com/yws/res/5698/2F8C20860C274FF3869E0F300575CC84)
+
+- 根据文档ID进行get查询
+![image](http://note.youdao.com/yws/res/5701/0C4FA50CBBD04200BD05F06B02CBF3CA)
+
+先根据文档id确定shard编号，再根据集群路由表，到对应的primary shard和replica shard所在的节点上进行查找，如果在segment未找到，则在translog中进行查找。
+
+- 根据条件search查询
+![image](http://note.youdao.com/yws/res/5704/3B99F4A45F2641F3AAA78EE074232BE9)
+
+根据查询的索引名称和集群路由表信息，到所有的primary shard和replica shard所在的节点进行检索，将检索到的结果
+按照_score进行排序后将document id返回给协调节点，协调节点将各个响应结果整合成全局有序的结果集，默认取前200条记录，向对应节点取document结果集，最后返回给客户端。
+
+6. Elasticsearch在部署时，对Linux的设置有哪些优化方法？
+
+（1）关闭缓存 swap;
+
+（2）堆内存设置为：Min（节点内存/2, 32GB）;
+
+（3）设置最大文件句柄数；
+
+（4）线程池+队列大小根据业务需要做调整；
+
+（5）磁盘存储 raid 方式——存储有条件使用 RAID10，增加单节点性能以及避免单节点存储故障。
+
+7. lucence内部结构是什么。
+
+Lucene 是有索引和搜索的两个过程，包含索引创建，索引，搜索三个要点。可以基于这个脉络展开一些。
+
+- FST：保存term字典，可以在FST上实现单Term、Term范围、Term前缀和通配符查询等。倒排链：保存了每个term对应的docId的列表，采用skipList的结构保存，用于快速跳跃。
+- BKD-Tree：BKD-Tree是一种保存多维空间点的数据结构，用于数值类型(包括空间点)的快速查找。
+- DocValues：基于docId的列式存储，由于列式存储的特点，可以有效提升排序聚合的性能。
+
+[2019年常见Elasticsearch 面试题答案详细解析](https://zhuanlan.zhihu.com/p/99539109)
+
+[Lucene系列（一）快速入门](https://juejin.im/post/5abde676f265da23a049abb6)
+
+全文检索的流程分为两大部分：索引流程、搜索流程。
+- 索引流程：即采集数据构建文档对象分析文档（分词）创建索引。
+- 搜索流程：即用户通过搜索界面创建查询执行搜索，搜索器从索引库搜索渲染搜索结果。
+
+Quota
+
+机器资源，单位是台，每台规格是：cpu16核，内存64G，磁盘3T
+
+ES架构优缺点
+
+优点
+- P2P对等架构，发现故障时自动分配其他节点工作，系统易管理，易伸缩
+- 系统不依赖其他服务，自带分布式协调器，稳定型高
+- 写入性能高，先写内存，再定期refresh到磁盘
+- 插件式架构，易于开发者自定义插件，可扩展性高
+
+缺点
+- 数据不能实时可见，只有经过refresh时间后才可被search
+- 没有实现事物，不适合需要事务支持的场景
+- 集群庞大后，异常恢复时间久，网络请求风暴
+- 对于海量数据的多维度统计计算支持较差
+
+数据类型
+- 核心数据类型
+string、numberic、date、boolean、binary、range
+- 复杂数据类型
+array、object、nested
+- GEO类型
+geo-point、geo-shape
+- 专业数据类型
+ip、token、mapper-murmur3
+- 多字段类型
+一个字段可以定义多个数据类型
+
+强大API
+- 集群级别API
+health、stats、reroute、update settings…
+- 索引级别API
+mapping、setting、aliase、template、refresh…
+- 节点级别API
+stats、info、hot_threads、task list…
+- cat API
+shards、nodes、indices、thread pool…
+
+FastIndex离线导入
+![image](http://note.youdao.com/yws/res/5694/C014CD80CC98433D9DCEB2D59BDE3010)
+
+地理查询
+
+[Elasticsearch 地理位置查询](https://blog.csdn.net/ztchun/article/details/93770859)
+
+[用户画像3：标签数据存储](https://www.jianshu.com/p/3162c67987ab)
+
+---
+
+### HBase
+
+[HBase面试题](https://www.jianshu.com/p/e405ed781cab)
+
+[一篇文章带你快速搞懂HBase RowKey设计](https://juejin.im/post/5d10bb5051882546e072cb45)
+
+[如何合理的设计HBase RowKey?](http://www.nosqlnotes.com/technotes/hbase/hbase-rowkey-design/)
+
+HBase的特点 
+- HBase是基于列存储的，每个列族都由几个文件保存，不同列族的文件是分离的。而传统的关系型数据库是基于表格结构和行模式保存的。 
+- 稀疏性，列可以动态增加，并且列为空就不存储数据，节省存储空间，结构化数据库(RDBMS)
+- 可伸缩性，Hbase能自动切分数据，使得数据存储自动具有水平扩展功能。当数据了越来越大，关系型数据库就需要做读写分离、分库分表等，而这时候一些 join的操作也就不能用了，只能借助中间层，总而言之就是特别麻烦;而HBase只需要加机器即可，它会自动水平切分。
+- Hbase可以提供高并发读写操作的支持。 
+- Hbase只有简单的字符类型，所有的类型都是交由用户自己处理，它只保存字符串。而关系数据库有丰富的类型和存储方式。
+- HBase只有很简单的插入、查询、删除、清空等操作，表和表之间是分离的，没有复杂的表和表之间的关系，而传统数据库通常有各式各样的函数和连接操作。
+- HBase的更新操作不应该叫更新，它实际上是插入了新的数据(不同ts)，而传 统数据库是替换修改。

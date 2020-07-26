@@ -63,6 +63,8 @@ tags:
 
 [10-缓存](https://nanfangstation.github.io/2020/07/26/缓存/)
 
+[11-NoSQL](https://nanfangstation.github.io/2020/07/26/NoSQL/)
+
 最后附一张Java技能图谱。
 
 ![Java技能图谱](http://blog.jeeqb.com/static/upload/20180424/-pPedLQdA4rfd4MEK8lg8uzL.jpg)
