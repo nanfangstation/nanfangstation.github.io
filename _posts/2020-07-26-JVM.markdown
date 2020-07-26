@@ -1,0 +1,78 @@
+---
+layout:     post
+title:      "JVM"
+subtitle:   "觉知此事要躬行..."
+date:       2020-07-26
+author:     "Lydia"
+header-img: "img/post-bg-design.jpg"
+catalog: true
+tags:
+    - 面试
+    - JVM
+---
+
+## 总结
+
+- 运行时内存区域特别是堆的内存分配到垃圾回收过程
+- Java中的四种引用类型
+- 类加载机制-双亲委派模型
+- 性能调优实战经历【从CPU、内存、磁盘、网络说开去
+- JVM命令及参数调优
+
+## 参考
+
+[史上最全阿里 Java 面试题总结](https://www.jianshu.com/p/f53b9d349c66)
+
+[Java虚拟机(JVM)面试题（2020最新版）](https://thinkwon.blog.csdn.net/article/details/104390752)
+
+[Java中的四种引用类型](https://www.jianshu.com/p/147793693edc)
+
+---
+
+1. 什么情况下会发生栈内存溢出。
+
+栈是线程私有的，他的生命周期与线程相同，每个方法在执行的时候都会创建一个栈帧，用来存储局部变量表，操作数栈，动态链接，方法出口灯信息。局部变量表又包含基本数据类型，对象引用类型（局部变量表编译器完成，运行期间不会变化）
+
+所以我们可以理解为栈溢出就是方法执行是创建的栈帧超过了栈的深度。那么最有可能的就是方法递归调用产生这种结果。
+
+我们需要使用参数 -Xss 去调整JVM栈的大小
+
+[什么情况下会发生堆内存溢出，栈内存溢出，结合实例说明](https://blog.csdn.net/qq_31615049/article/details/82980799)
+
+2. JVM的内存结构，Eden和Survivor比例。
+
+[Java内存模型](https://www.jianshu.com/p/92831ea4650d)
+
+![image](http://note.youdao.com/yws/res/5454/97CAC42FE7A34F6C8E8C0C77B6CBE3A2)
+
+![image](http://note.youdao.com/yws/res/5452/F2E06934D7B641A3B9FA34A01D774213)
+
+3. JVM内存为什么要分成新生代，老年代，持久代。新生代中为什么要分为Eden和Survivor。
+
+4. JVM中一次完整的GC流程是怎样的，对象如何晋升到老年代，说说你知道的几种主要的JVM参数。
+
+5. 你知道哪几种垃圾收集器，各自的优缺点，重点讲下cms和G1，包括原理，流程，优缺点。
+
+6. 垃圾回收算法的实现原理。
+
+7. 当出现了内存溢出，你怎么排错。
+
+8. JVM内存模型的相关知识了解多少，比如重排序，内存屏障，happen-before，主内存，工作内存等。
+
+9. 简单说说你了解的类加载器，可以打破双亲委派么，怎么打破。
+
+10. 讲讲JAVA的反射机制。
+
+11. 你们线上应用的JVM参数有哪些。
+
+12. g1和cms区别,吞吐量优先和响应优先的垃圾收集器选择。
+
+13. 怎么打出线程栈信息。
+
+14. 请解释如下jvm参数的含义：
+-server -Xms512m -Xmx512m -Xss1024K
+-XX:PermSize=256m -XX:MaxPermSize=512m -
+XX:MaxTenuringThreshold=20XX:CMSInitiatingOccupancyFraction=80 -
+XX:+UseCMSInitiatingOccupancyOnly。
+
+[JVM常见面试题解析](https://juejin.im/post/5d35ca5b518825449c64bc31)
