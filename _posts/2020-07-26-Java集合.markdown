@@ -1,0 +1,98 @@
+---
+layout:     post
+title:      "Java集合"
+subtitle:   "觉知此事要躬行..."
+date:       2020-07-26
+author:     "Lydia"
+header-img: "img/post-bg-design.jpg"
+catalog: true
+tags:
+    - 面试
+    - Java
+---
+
+## 总结
+
+- HashMap源码要非常熟悉，put方法链路要能说出来，还需对比JDK1.6/1.7/1.8的区别，同理还有ConcurrentHashMap
+- 如何用队列实现栈或者用栈实现队列
+- 实现LRU Cache
+- 优先队列是一大利器
+
+## 参考
+
+[Java集合容器面试题（2020最新版）](https://thinkwon.blog.csdn.net/article/details/104588551)
+
+> Map接口和Collection接口是所有集合框架的父接口
+
+- Collection接口的子接口包括：Set接口和List接口
+- Map接口的实现类主要有：HashMap、TreeMap、Hashtable、ConcurrentHashMap以及Properties等
+- Set接口的实现类主要有：HashSet、TreeSet、LinkedHashSet等
+- List接口的实现类主要有：ArrayList、LinkedList、Stack以及Vector等
+
+> Iterator 和 ListIterator 有什么区别？
+
+- Iterator 可以遍历 Set 和 List 集合，而 ListIterator 只能遍历 List。
+- Iterator 只能单向遍历，而 ListIterator 可以双向遍历（向前/后遍历）。
+- ListIterator 实现 Iterator 接口，然后添加了一些额外的功能，比如添加一个元素、替换一个元素、获取前面或后面元素的索引位置。
+
+> Java集合的快速失败机制 “fail-fast”？
+
+是java集合的一种错误检测机制，当多个线程对集合进行结构上的改变的操作时，有可能会产生 fail-fast 机制。
+
+**原因**：迭代器在遍历时直接访问集合中的内容，并且在遍历过程中使用一个 modCount 变量。集合在被遍历期间如果内容发生变化，就会改变modCount的值。每当迭代器使用hashNext()/next()遍历下一个元素之前，都会检测modCount变量是否为expectedmodCount值，是的话就返回遍历；否则抛出异常，终止遍历。
+
+**解决办法**：
+在遍历过程中，所有涉及到改变modCount值得地方全部加上synchronized。
+使用CopyOnWriteArrayList来替换ArrayList
+
+可以使用 Collections. unmodifiableCollection(Collection c) 方法来创建一个只读集合，这样改变集合的任何操作都会抛出 Java. lang. UnsupportedOperationException 异常。
+
+> 遍历
+
+==**for** 循环遍历==，基于计数器。在集合外部维护一个计数器，然后依次读取每一个位置的元素，当读取到最后一个元素后停止。
+
+==迭代器遍历==，Iterator。Iterator 是面向对象的一个设计模式，目的是屏蔽不同数据集合的特点，统一遍历集合的接口。Java 在 Collections 中支持了 Iterator 模式。
+
+==foreach 循环遍历==。foreach 内部也是采用了 Iterator 的方式实现，使用时不需要显式声明 Iterator 或计数器。优点是代码简洁，不易出错；缺点是只能做简单的遍历，不能在遍历过程中操作数据集合，例如删除、替换。
+
+推荐的做法就是，支持 Random Access 的列表可用 for 循环遍历，否则建议用 Iterator 或 foreach 遍历。
+
+> ArrayList
+
+ArrayList的优点如下：
+
+ArrayList 底层以数组实现，是一种随机访问模式。ArrayList 实现了 RandomAccess 接口，因此查找的时候非常快。
+ArrayList 在顺序添加一个元素的时候非常方便。
+
+ArrayList 的缺点如下：
+
+删除元素的时候，需要做一次元素复制操作。如果要复制的元素很多，那么就会比较耗费性能。
+插入元素的时候，也需要做一次元素复制操作，缺点同上。
+ArrayList 比较适合顺序添加、随机访问的场景。
+
+> 如何实现数组和 List 之间的转换？
+
+- 数组转 List：使用 Arrays. asList(array) 进行转换。
+- List 转数组：使用 List 自带的 toArray() 方法。
+
+> ArrayList 和 LinkedList 的区别是什么？
+
+- 数据结构实现：ArrayList 是动态数组的数据结构实现，而 LinkedList 是双向链表的数据结构实现。
+- 随机访问效率：ArrayList 比 LinkedList 在随机访问的时候效率要高，因为 LinkedList 是线性的数据存储方式，所以需要移动指针从前往后依次查找。
+- 增加和删除效率：在非首尾的增加和删除操作，LinkedList 要比 ArrayList 效率要高，因为 ArrayList 增删操作要影响数组内的其他数据的下标。
+- 内存空间占用：LinkedList 比 ArrayList 更占内存，因为 LinkedList 的节点除了存储数据，还存储了两个引用，一个指向前一个元素，一个指向后一个元素。
+- 线程安全：ArrayList 和 LinkedList 都是不同步的，也就是不保证线程安全；
+
+> List 和 Set 的区别
+
+List , Set 都是继承自Collection 接口
+
+- List 特点：一个有序（元素存入集合的顺序和取出的顺序一致）容器，元素可以重复，可以插入多个null元素，元素都有索引。常用的实现类有 ArrayList、LinkedList 和 Vector。
+- Set 特点：一个无序（存入和取出顺序有可能不一致）容器，不可以存储重复元素，只允许存入一个null元素，必须保证元素唯一性。Set 接口常用实现类是 HashSet、LinkedHashSet 以及 TreeSet。
+
+另外 List 支持for循环，也就是通过下标来遍历，也可以用迭代器，但是set只能用迭代，因为他无序，无法用下标来取得想要的值。
+
+Set和List对比
+
+- Set：检索元素效率低下，删除和插入效率高，插入和删除不会引起元素位置改变。
+- List：和数组类似，List可以动态增长，查找元素效率高，插入删除元素效率低，因为会引起其他元素位置改变
