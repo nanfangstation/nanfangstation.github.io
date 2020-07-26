@@ -16,14 +16,20 @@ tags:
 - CAS、AQS是基础
 - 锁升级过程
 - ThreadLocal原理
+- 两个线程交替打印奇偶数的实现
 
 ## 参考
 
 [史上最全阿里 Java 面试题总结](https://www.jianshu.com/p/f53b9d349c66)
+
 [并发编程面试题（2020最新版）](https://thinkwon.blog.csdn.net/article/details/104863992)
+
 [从ReentrantLock的实现看AQS的原理及应用](https://tech.meituan.com/2019/12/05/aqs-theory-and-apply.html)
+
 [【死磕Java并发】—–J.U.C之AQS（一篇就够了）](https://juejin.im/entry/5ae02a7c6fb9a07ac76e7b70)
+
 [队列同步器（AQS）详解](https://blog.csdn.net/sunxianghuang/article/details/52287968)
+
 [深入理解AbstractQueuedSynchronizer(AQS)](https://juejin.im/post/5aeb07ab6fb9a07ac36350c8)
 
 happen-before原则 8个
