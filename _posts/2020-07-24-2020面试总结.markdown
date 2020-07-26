@@ -12,7 +12,7 @@ tags:
 
 # 总结
 
-保密...
+基础+数据库+缓存+消息队列+分布式
 
 # 计划
 - [x] 数据结构与算法
@@ -58,6 +58,10 @@ tags:
 [07-Spring](https://nanfangstation.github.io/2020/07/26/Spring/)
 
 [08-Mybatis](https://nanfangstation.github.io/2020/07/26/Mybatis/)
+
+[09-数据库](https://nanfangstation.github.io/2020/07/26/数据库/)
+
+[10-缓存](https://nanfangstation.github.io/2020/07/26/缓存/)
 
 最后附一张Java技能图谱。
 
