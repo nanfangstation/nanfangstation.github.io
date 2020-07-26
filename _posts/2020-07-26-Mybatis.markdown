@@ -1,0 +1,27 @@
+---
+layout:     post
+title:      "Mybatis"
+subtitle:   "觉知此事要躬行..."
+date:       2020-07-26
+author:     "Lydia"
+header-img: "img/post-bg-design.jpg"
+catalog: true
+tags:
+    - 面试
+    - Mybatis
+---
+
+## 总结
+
+- Mybatis源码，执行过程
+- 一级缓存、二级缓存
+
+## 参考
+
+[史上最全阿里 Java 面试题总结](https://www.jianshu.com/p/f53b9d349c66)
+
+[MyBatis面试题（2020最新版）](https://thinkwon.blog.csdn.net/article/details/101292950)
+
+[聊聊MyBatis缓存机制）](https://tech.meituan.com/2018/01/19/mybatis-cache.html)
+
+[MyBatis视频教程](https://ke.qq.com/course/199779?taid=1162699186834531)
