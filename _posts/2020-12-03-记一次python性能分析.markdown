@@ -1,0 +1,157 @@
+---
+layout:     post
+title:      "记一次python性能分析"
+subtitle:   "让优秀成为一种习惯"
+date:       2020-12-03
+author:     "Lydia"
+header-img: "img/post-bg-design.jpg"
+catalog: true
+tags:
+    - Python
+    - 性能
+---
+
+## 背景
+
+QA反馈接口超时。
+
+```
+import cProfile
+import pstats
+import timeit
+
+
+params={'platform_id': '6839889447840907278'}
+cProfile.run("ins.get_monitor_data_source(params)", "timeit")
+p = pstats.Stats('timeit')
+p.sort_stats('cumulative')
+p.print_stats(10)
+```
+
+耗时排行如下：
+
+![](https://tva1.sinaimg.cn/large/0081Kckwgy1glb5soxj33j31bq0fcdlm.jpg)
+
+通过定位发现最耗时的函数是 get_ques_of_task()【功能：获取当前task下最高版本的问题列表】，代码如下：
+
+![](https://tva1.sinaimg.cn/large/0081Kckwgy1glb5tjo55kj31tg0ewgpo.jpg)
+
+**明显看到43、44行代码存在逻辑问题，一行SQL可以处理的问题使用内存循环后导致超时**
+
+给出优化方案后，特此系统学习并总结c Profile用法。
+
+## 简介
+
+[`cProfile`](https://docs.python.org/zh-cn/3/library/profile.html#module-cProfile) 和 [`profile`](https://docs.python.org/zh-cn/3/library/profile.html#module-profile) 提供了 Python 程序的 *确定性性能分析* 。 *profile* 是一组统计数据，描述程序的各个部分执行的频率和时间。这些统计数据可以通过 [`pstats`](https://docs.python.org/zh-cn/3/library/profile.html#module-pstats) 模块格式化为报表。
+
+## 实践
+
+### 分析函数
+
+```
+>>> import cProfile
+>>> import re
+>>> cProfile.run('re.compile("foo|bar")')
+         244 function calls (237 primitive calls) in 0.000 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.000    0.000 <string>:1(<module>)
+        2    0.000    0.000    0.000    0.000 enum.py:283(__call__)
+        2    0.000    0.000    0.000    0.000 enum.py:562(__new__)
+        9    0.000    0.000    0.000    0.000 enum.py:659(name)
+        1    0.000    0.000    0.000    0.000 enum.py:790(_missing_)
+        1    0.000    0.000    0.000    0.000 enum.py:797(_create_pseudo_member_)
+        1    0.000    0.000    0.000    0.000 enum.py:833(__and__)
+        1    0.000    0.000    0.000    0.000 enum.py:869(_decompose)
+        1    0.000    0.000    0.000    0.000 enum.py:886(<listcomp>)
+        1    0.000    0.000    0.000    0.000 re.py:250(compile)
+        1    0.000    0.000    0.000    0.000 re.py:289(_compile)
+```
+
+上述打印`re.compile("foo|bar")`执行结果，分析如下：
+
+第4行：显示监听了244个调用。在这些调用中，有237个是 *原始的* ，这意味着调用不是通过递归引发的。
+
+第6行：`Ordered by: standard name` ，表示最右边列中的文本字符串用于对输出进行排序。
+
+第8行：每一列属性含义：
+
+- ncalls：调用次数
+
+- tottime：在指定函数中消耗的总时间（不包括调用子函数的时间）
+
+- percall：是 `tottime` 除以 `ncalls` 的商
+
+- cumtime：指定的函数及其所有子函数（从调用到退出）消耗的累积时间。这个数字对于递归函数来说是准确的。
+
+- percall：是 `cumtime` 除以原始调用（次数）的商（即：函数运行一次的平均时间）
+
+- filename:lineno(function)：提供相应数据的每个函数
+
+
+
+### 分析脚本
+
+```
+  python -m cProfile [-o output_file] [-s sort_order] (-m module | myscript.py)
+```
+
+- `-o` 将profile 结果写入文件而不是标准输出
+
+- `-s` 指定 [`sort_stats()`](https://docs.python.org/zh-cn/3/library/profile.html#pstats.Stats.sort_stats) 排序值之一以对输出进行排序。这仅适用于未提供 `-o` 的情况
+
+- `-m` 指定要分析的是模块而不是脚本。
+
+### Stats
+> pstats模块的Stats类有各种方法来操作和打印保存到概要文件结果文件中的数据
+```
+import pstats
+from pstats import SortKey
+p = pstats.Stats('restats')
+p.strip_dirs().sort_stats(-1).print_stats()
+# 按函数名对列表排序
+p.sort_stats(SortKey.NAME)
+# 打印统计数据
+p.print_stats()
+# 根据每个函数花费的时间进行排序，然后打印前10个函数的统计信息
+p.sort_stats(SortKey.TIME).print_stats(10)
+# 这一行使用主键time和副键cumulative time对统计信息进行排序，然后打印出一些统计信息。具体来说，列表首先被剔除到原始大小的50% (re: .5)，然后只维护包含init的行，并打印子-子列表。
+p.sort_stats(SortKey.TIME, SortKey.CUMULATIVE).print_stats(.5, 'init')
+# 列出的每个函数的调用者列表
+p.print_callers(.5, 'init')
+```
+有效的SortKey
+
+| 有效字符串参数 | 有效枚举参数       | 含义         |
+| :------------- | :----------------- | :----------- |
+| `'calls'`      | SortKey.CALLS      | 调用次数     |
+| `'cumulative'` | SortKey.CUMULATIVE | 累积时间     |
+| `'cumtime'`    | N/A                | 累积时间     |
+| `'file'`       | N/A                | 文件名       |
+| `'filename'`   | SortKey.FILENAME   | 文件名       |
+| `'module'`     | N/A                | 文件名       |
+| `'ncalls'`     | N/A                | 调用次数     |
+| `'pcalls'`     | SortKey.PCALLS     | 原始调用计数 |
+| `'line'`       | SortKey.LINE       | 行号         |
+| `'name'`       | SortKey.NAME       | 函数名称     |
+| `'nfl'`        | SortKey.NFL        | 名称/文件/行 |
+| `'stdname'`    | SortKey.STDNAME    | 标准名称     |
+| `'time'`       | SortKey.TIME       | 内部时间     |
+| `'tottime'`    | N/A                | 内部时间     |
+
+- 调用计数统计信息可用于识别代码中的错误（意外计数），并识别可能的内联扩展点（高频调用）。
+- 内部时间统计可用于识别应仔细优化的 "热循环" 。
+- 累积时间统计可用于识别算法选择上的高级别错误。请注意，该分析器中对累积时间的异常处理，允许直接比较算法的递归实现与迭代实现的统计信息。
+
+`局限性分析`
+
+
+## 参考
+
+[Python Profilers 分析器](https://docs.python.org/zh-cn/3/library/profile.html)
+
+[使用cProfile分析Python程序性能](https://blog.csdn.net/asukasmallriver/article/details/74356771)
+
+[意外之喜：Python 3.9.1rc1 文档](https://docs.python.org/zh-cn/3/)
