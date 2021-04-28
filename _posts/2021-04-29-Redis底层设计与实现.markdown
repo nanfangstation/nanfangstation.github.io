@@ -1,0 +1,537 @@
+---
+layout:     post
+title:      "Redis底层设计与实现"
+subtitle:   "Redis"
+date:       2020-12-19
+author:     "Lydia"
+header-img: "img/post-bg-redis.jpeg"
+catalog: true
+tags:
+    - Redis
+    - 原理
+---
+
+Redis分享
+
+## 概览
+
+Redis 是一个开源（BSD许可）的，内存中的数据结构存储系统，它可以用作数据库、缓存和消息中间件。
+
+支持多种类型的数据结构
+
+- **字符串（strings）** 
+- **散列（hashes）** 
+- **列表（lists）** 
+- **集合（sets）** 
+- **有序集合（sorted sets）** 
+- Bitmaps（适合二值统计） 
+- Hyperloglogs（统计规则基于概率完成，标准误算率 0.81%） 
+- 地理空间（geospatial） 索引半径查询 
+
+![image-20210428235803421](/Users/pengnanfang/Library/Application%20Support/typora-user-images/image-20210428235803421.png)
+
+## 数据结构
+
+![img](https://static001.geekbang.org/resource/image/82/01/8219f7yy651e566d47cc9f661b399f01.jpg)
+
+值的底层实现依赖的数据结构是如何实现的呢？
+
+**SDS**
+
+**结构定义**
+
+跟传统的 C 语言字符串不一样，Redis 使用了 SDS 来构建自己的字符串对象，源码(sds.h/sdshdr)如下：
+
+> SDS的定义在Redis 3.2版本之后有一些改变，由一种数据结构变成了5种数据结构，会根据SDS存储的内容长度来选择不同的结构，以达到节省内存的效果
+
+```
+ // 3.0
+
+ struct sdshdr{
+
+ 
+
+   // 字节数组，用于保存字符串
+
+   char buf[];
+
+ 
+
+   // 记录buf数组中已使用的字节数量，也是字符串的长度
+
+   int len;
+
+
+
+   // 记录buf数组未使用的字节数量
+
+   int free;
+
+ }
+```
+
+![asynccode_1.png](blob:file:///1e5aa3d7-a579-45d6-84fb-1ebfce3e6011)
+
+- free 属性的值为 0 ， 表示这个 SDS 没有分配任何未使用空间。 
+- len 属性的值为 5 ， 表示这个 SDS 保存了一个五字节长的字符串。 
+- buf 属性是一个 char 类型的数组， 数组的前五个字节分别保存了 'R' 、 'e' 、 'd' 、 'i' 、 's' 五个字符， 而最后一个字节则保存了空字符 '\0' 。 
+
+**SDS vs C字符串**
+
+|                                                              | SDS                                              | C 字符串                                         |
+| ------------------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------ |
+| **常数复杂度获取字符串长度**                                 | 获取字符串长度的复杂度为 O(1) 。                 | 获取字符串长度的复杂度为 O(N) 。                 |
+| **不会发生缓冲区溢出**                                       | API 是安全的，不会造成缓冲区溢出。               | API 是不安全的，可能会造成缓冲区溢出。           |
+| **减少内存分配的次数** **(****空间预分配** **&** **惰性空间释放****)** | 修改字符串长度 N 次最多需要执行 N 次内存重分配。 | 修改字符串长度 N 次必然需要执行 N 次内存重分配。 |
+| **二进制安全的**                                             | 可以保存文本或者二进制数据。                     | 只能保存文本数据。                               |
+| 遵循空字符结尾重用一部分 C 字符串函数库里面的函数            | 可以使用一部分 <string.h> 库中的函数。           | 可以使用所有 <string.h> 库中的函数。             |
+
+**链表**
+
+因为 Redis 使用的 C 语言并没有内置这种数据结构， 所以 Redis 构建了自己的链表实现。
+
+除了链表键之外， 发布与订阅、慢查询、监视器等功能也用到了链表， Redis 服务器本身还使用链表来保存多个客户端的状态信息， 以及使用链表来构建客户端输出缓冲区（output buffer）。
+
+- 链表被广泛用于实现 Redis 的各种功能， 比如列表键， 发布与订阅， 慢查询， 监视器， 等等。 
+- 每个链表节点由一个 listNode 结构来表示， 每个节点都有一个指向前置节点和后置节点的指针， 所以 Redis 的链表实现是双端链表。 
+- 每个链表使用一个 list 结构来表示， 这个结构带有表头节点指针、表尾节点指针、以及链表长度等信息。 
+- 因为链表表头节点的前置节点和表尾节点的后置节点都指向 NULL ， 所以 Redis 的链表实现是无环链表。 
+- 通过为链表设置不同的类型特定函数， Redis 的链表可以用于保存各种不同类型的值。 
+
+```
+ redis> LLEN integers
+ (integer) 1024
+
+ redis> LRANGE integers 0 10
+ 1) "1"
+ 2) "2"
+ 3) "3"
+ 4) "4"
+ 5) "5"
+ 6) "6"
+ 7) "7"
+ 8) "8"
+ 9) "9"
+ 10) "10"
+ 11) "11"
+```
+
+**哈希**
+
+website 是一个包含 10086 个键值对的哈希键， 这个哈希键的键都是一些数据库的名字， 而键的值就是数据库的主页网址：
+
+```
+ redis> HLEN website
+ (integer) 10086
+
+ redis> HGETALL website
+ 1) "Redis"
+ 2) "Redis.io"
+ 3) "MariaDB"
+ 4) "MariaDB.org"
+ 5) "MongoDB"
+ 6) "MongoDB.org"
+ # ...
+```
+
+在Redis中，键值对（Key-Value Pair）存储方式是由字典（Dict）保存的，而字典底层是通过哈希表来实现的。
+
+**结构定义**
+
+dict.h/dictht 结构定义：
+
+```
+ typedef struct dictht {
+
+   // 哈希表数组
+   dictEntry **table;
+
+   // 哈希表大小 redis默认初始化4
+   unsigned long size;
+
+   // 哈希表大小掩码，用于计算索引值
+   // 总是等于 size - 1
+   unsigned long sizemask;
+
+   // 该哈希表已有节点的数量
+   unsigned long used;
+
+ } dictht;
+```
+
+- table 属性是一个数组， 数组中的每个元素都是一个指向 dict.h/dictEntry 结构的指针， 每个 dictEntry 结构保存着一个键值对。 
+- size 属性记录了哈希表的大小， 也即是 table 数组的大小， 而 used 属性则记录了哈希表目前已有节点（键值对）的数量。 
+- sizemask 属性的值总是等于 size - 1 ， 这个属性和哈希值一起决定一个键应该被放到 table 数组的哪个索引上面。 采用MurmurHash2 算法计算键的哈希值。 
+
+哈希表节点使用 dictEntry 结构表示， 每个 dictEntry 结构都保存着一个键值对：
+
+```
+typedef struct dictEntry {
+
+  // 键定义
+  void *key;
+
+  // 值定义
+  union {
+​    void *val; *//* 自定义类型
+​    uint64_t u64; *//* 无符号整形
+​    int64_t s64; *//* 有符号整形
+  } v;
+
+  // 指向下个哈希表节点，形成链表
+  struct dictEntry *next;
+
+} dictEntry;
+```
+
+key 属性保存着键值对中的键， 而 v 属性则保存着键值对中的值， 其中键值对的值可以是一个指针， 或者是一个 uint64_t 整数， 又或者是一个 int64_t 整数。
+
+next 属性是指向另一个哈希表节点的指针， 这个指针可以将多个哈希值相同的键值对连接在一次， 以此来解决键冲突（collision）的问题（**链地址法**）。
+
+![asynccode_2.png](blob:file:///e1e633fa-9d8e-4fd7-b7bb-006705b3a55d)
+
+**字典实现**
+
+```
+typedef struct dict {
+
+  // 字典类型
+  dictType *type;
+
+  // 私有数据
+  void *privdata;
+
+  // 哈希表
+  dictht ht[2];
+
+  // rehash 索引
+  // 当 rehash 不在进行时，值为 -1
+  int rehashidx; /* rehashing not in progress if rehashidx == -1 */
+
+} dict;
+```
+
+type 属性和 privdata 属性是针对不同类型的键值对， 为创建多态字典而设置的：
+
+- type 属性是一个指向 dictType 结构的指针， 每个 dictType 结构保存了一簇用于操作特定类型键值对的函数， Redis 会为用途不同的字典设置不同的类型特定函数。 
+- 而 privdata 属性则保存了需要传给那些类型特定函数的可选参数。 
+
+ht 属性是一个包含两个项的数组， 数组中的每个项都是一个 dictht 哈希表， 一般情况下， 字典只使用 ht[0] 哈希表， ht[1] 哈希表只会在对 ht[0] 哈希表进行 rehash 时使用。
+
+除了 ht[1] 之外， 另一个和 rehash 有关的属性就是 rehashidx ： 它记录了 rehash 目前的进度， 如果目前没有在进行 rehash ， 那么它的值为 -1 。
+
+![asynccode_3.png](blob:file:///4e3403b2-1bfe-4677-82ab-d085344e95a3)
+
+**Rehash**
+
+**当Redis 节点中的Key总量到达临界点后，Redis就会触发Dict的扩展，进行Rehash。申请扩展后相应的内存空间大小。**
+
+哈希冲突链上的元素只能通过指针逐一查找再操作。如果哈希表里写入的数据越来越多，哈希冲突可能也会越来越多，这就会导致某些哈希冲突链过长，进而导致这个链上的元素查找耗时长，效率降低。对于追求“快”的 Redis 来说，这是不太能接受的。
+
+所以，Redis 会对哈希表做 rehash 操作。rehash 也就是增加现有的哈希桶数量，让逐渐增多的 entry 元素能在更多的桶之间分散保存，减少单个桶中的元素数量，从而减少单个桶中的冲突。那具体怎么做呢？
+
+![asynccode.jpg](blob:file:///5f1a57f2-3355-4621-8cec-d9cb38f732c9)
+
+为了使 rehash 操作更高效，Redis 默认使用了两个全局哈希表：哈希表 1 和哈希表 2。一开始，当你刚插入数据时，默认使用哈希表 1，此时的哈希表 2 并没有被分配空间。随着数据逐步增多，Redis 开始执行 rehash，这个过程分为三步：
+
+1. 给哈希表 2 分配更大的空间，例如是当前哈希表 1 大小的两倍； 
+2. 把哈希表 1 中的数据重新映射并拷贝到哈希表 2 中； 
+3. 释放哈希表 1 的空间。 
+
+**渐进式Rehash**
+
+Rehash第二步涉及大量的数据拷贝，如果一次性把哈希表 1 中的数据都迁移完，会造成 Redis 线程阻塞，无法服务其他请求。此时，Redis 就无法快速访问数据了。为了避免这个问题，Redis 采用了渐进式 rehash。
+
+就是在第二步拷贝数据时，Redis 仍然正常处理客户端请求，每处理一个请求时，从哈希表 1 中的第一个索引位置开始，顺带着将这个索引位置上的所有 entries 拷贝到哈希表 2 中；等处理下一个请求时，再顺带拷贝哈希表 1 中的下一个索引位置的 entries。如下图所示：
+
+![asynccode_1.jpg](blob:file:///f9558fd8-6cc6-4f6d-867f-b055e2fa4f7e)
+
+**跳跃表**
+
+跳跃表（skiplist）是一种有序数据结构， 它通过在每个节点中维持多个指向其他节点的指针， 从而达到快速访问节点的目的。
+
+跳跃表支持平均 O(\log N) 最坏 O(N) 复杂度的节点查找， 还可以通过顺序性操作来批量处理节点。
+
+Redis 使用跳跃表作为有序集合键的底层实现之一： 如果一个有序集合包含的元素数量比较多， 又或者有序集合中元素的成员（member）是比较长的字符串时， Redis 就会使用跳跃表来作为有序集合键的底层实现。
+
+Redis 只在两个地方用到了跳跃表， 一个是实现有序集合键， 另一个是在集群节点中用作内部数据结构。
+
+Redis的跳跃表实现是由redis.h/zskiplistNode和redis.h/zskiplist（3.2版本之后redis.h改为了server.h）两个结构定义，zskiplistNode定义跳跃表的节点，zskiplist保存跳跃表节点的相关信息。
+
+**特点**
+
+- 每个跳跃表节点的层数在1-32之间 
+- 一个跳跃表中，节点按照分值大小排序，多个节点的分值是可以相同的，相同时，节点按成员对象大小排序 
+- 每个节点的成员变量必须是唯一的 
+
+![asynccode_2.jpg](blob:file:///3668ddf4-2fc4-49fa-84c4-8dfdc735eb44)
+
+**整数集合**
+
+整数集合（intset）是Redis用于保存整数值的集合抽象数据结构，可以保存类型为int16_t、int32_t、int64_t的整数值，并且保证集合中不会出现重复元素。
+
+**结构定义**
+
+整数集合的定义为inset.h/inset
+
+```
+typedef struct intset {
+  // 编码方式
+  uint32_t encoding;
+  // 集合包含的元素数量
+  uint32_t length;
+  // 保存元素的数组
+  int8_t contents[];
+} intset;
+```
+
+contents数组：整数集合的每个元素在数组中按值的大小从小到大排序，且不包含重复项
+
+length记录整数集合的元素数量，即contents数组长度
+
+encoding决定contents数组的真正类型，如INTSET_ENC_INT16、INTSET_ENC_INT32、INTSET_ENC_INT64
+
+![asynccode_4.png](blob:file:///fc441245-cd8e-4608-89d1-d80e64404921)
+
+**升级（不支持降级）**
+
+升级整数集合并添加新元素共分为三步进行：
+
+1. 根据新元素的类型， 扩展整数集合底层数组的空间大小， 并为新元素分配空间。 
+2. 将底层数组现有的所有元素都转换成与新元素相同的类型， 并将类型转换后的元素放置到正确的位上， 而且在放置元素的过程中， 需要继续维持底层数组的有序性质不变。 
+3. 将新元素添加到底层数组里面。 
+
+**升级好处**
+
+- 提升灵活性 
+- 节省内存 
+
+**压缩列表**
+
+压缩列表是一种为节约内存而开发的顺序型数据结构。
+
+当一个列表键只包含少量列表项， 并且每个列表项要么就是小整数值， 要么就是长度比较短的字符串， 那么 Redis 就会使用压缩列表来做列表键的底层实现。
+
+```
+redis> RPUSH lst 1 3 5 10086 "hello" "world"
+(integer) 6
+
+redis> OBJECT ENCODING lst
+"ziplist"
+```
+
+**节点构成**
+
+一个压缩列表可以包含多个节点（entry），每个节点可以保存一个字节数组或者一个整数值。
+
+![asynccode_3.jpg](blob:file:///4f61e70f-df62-4600-817d-1005df889f9b)
+
+prev_len，表示前一个 entry 的长度。prev_len 有两种取值情况：1 字节或 5 字节。取值 1 字节时，表示上一个 entry 的长度小于 254 字节。虽然 1 字节的值能表示的数值范围是 0 到 255，但是压缩列表中 zlend 的取值默认是 255，因此，就默认用 255 表示整个压缩列表的结束，其他表示长度的地方就不能再用 255 这个值了。所以，当上一个 entry 长度小于 254 字节时，prev_len 取值为 1 字节，否则，就取值为 5 字节。len：表示自身长度，4 字节；encoding：表示编码方式，1 字节；content：保存实际数据。
+
+![asynccode_5.png](blob:file:///1abb0c8a-7545-4e63-9f62-e8b38848bf0a)
+
+- 列表 zlbytes 属性的值为 0xd2 （十进制 210）， 表示压缩列表的总长为 210 字节。 
+- 列表 zltail 属性的值为 0xb3 （十进制 179）， 这表示如果我们有一个指向压缩列表起始地址的指针 p ， 那么只要用指针 p 加上偏移量 179 ， 就可以计算出表尾节点 entry5 的地址。 
+- 列表 zllen 属性的值为 0x5 （十进制 5）， 表示压缩列表包含五个节点。 
+
+**遍历原理**
+
+从表尾向表头遍历： 只要我们拥有了一个指向某个节点起始地址的指针， 那么通过这个指针以及这个节点的 previous_entry_length 属性， 程序就可以一直向前一个节点回溯， 最终到达压缩列表的表头节点。
+
+**连锁更新**
+
+前提：每个节点的 previous_entry_length 属性都记录了前一个节点的长度。有两种取值情况：1 字节或 5 字节
+
+假设：在一个压缩列表中， 有多个连续的、长度介于 250 字节到 253 字节之间的节点 e1 至 eN 
+
+1. 新增节点 
+
+![asynccode_6.png](blob:file:///7b3884c9-3575-4ed4-a733-b7568d25f5d5)
+
+![asynccode_7.png](blob:file:///9d12463b-2a98-4a56-a9d8-d77ba3c485ac)
+
+![asynccode_8.png](blob:file:///cb78ab61-90a1-49a5-a90b-9c75bdc95544)
+
+1. 删除节点 
+
+添加新节点到压缩列表， 或者从压缩列表中删除节点， 可能会引发连锁更新操作， 但这种操作出现的几率并不高。
+
+**对象**
+
+Redis数据库里面每个键值对都是由对象组成的，其中
+
+- 键总是一个字符串对象 
+- 值可以是字符串对象、列表对象、哈希对象、集合对象、有序集合对象五种之一。 
+
+```
+ redis> SET msg "hello world"
+ OK
+```
+
+源码
+
+```
+ typedef struct redisObject {
+
+   // 值类型
+   unsigned type:4;  
+
+   // 值编码方式
+   unsigned encoding:4;
+
+   // 指向数据的指针
+   void *ptr;
+
+   // 记录对象最后一次被程序访问时间，用于计算空转时长(当前时间-lru)
+   // 用于淘汰过期的键值对
+   unsigned lru:22; /* lru time (relative to server.lruclock) */
+
+   // 引用计数，用于内存回收
+   int refcount;
+
+ } robj;
+```
+
+**type/类型**
+
+TYPE命令实现方式与此类似
+
+```
+ /*
+ * 对象类型
+ */
+ #define REDIS_STRING 0 // 字符串
+ #define REDIS_LIST 1  // 列表
+ #define REDIS_SET 2   // 集合
+ #define REDIS_ZSET 3  // 有序集合
+ #define REDIS_HASH 4  // 哈希表
+```
+
+**encoding/编码**
+
+ 记录了对象所保存的值的编码，它的值可能是以下常量的其中一个。每种类型的对象都至少用了两种不同编码。
+
+```
+ /*
+ * 对象编码
+ */
+ #define REDIS_ENCODING_RAW 0      // 编码为字符串
+ #define REDIS_ENCODING_INT 1      // 编码为整数
+ #define REDIS_ENCODING_HT 2       // 编码为哈希表
+ #define REDIS_ENCODING_ZIPMAP 3     // 编码为 zipmap
+ #define REDIS_ENCODING_LINKEDLIST 4   // 编码为双端链表
+ #define REDIS_ENCODING_ZIPLIST 5    // 编码为压缩列表
+ #define REDIS_ENCODING_INTSET 6     // 编码为整数集合
+ #define REDIS_ENCODING_SKIPLIST 7    // 编码为跳跃表
+```
+
+**编码转换**
+
+|              | 编码               | 编码转换                                                     |
+| ------------ | ------------------ | ------------------------------------------------------------ |
+| 字符串对象   | int/embstr/raw     | •	int 类型的字符串，当保存的不再是**整数值**，将转换成 raw 类型 	•	embstr 类型的字符串是**只读的**，修改时会转换成 raw 类型。原因：Redis 没有为 embstr 提供修改程序，所以它是只读的；要修改只能先转成 raw。 |
+| 列表对象     | ziplist/linkedlist | 满足以下两个条件使用ziplist编码，可配置 •	列表保存的所有键和值的长度都都小于64字节 / **list-max-ziplist-value** 	•	列表对象保存元素数量小于512个 / **list-max-ziplist-entries** |
+| 哈希对象     | ziplist/hashtable  | 满足以下两个条件使用ziplist编码，可配置 •	哈希对象保存的所有字符串元素长度都小于64字节 / hash**-max-ziplist-value** 	•	哈希对象保存键值对数量小于512个 / hash**-max-ziplist-entries** |
+| 集合对象     | intset/hashtable   | 满足以下两个条件使用intset编码，可配置 •	集合对象保存的所有元素都是整数值 	•	集合对象保存的元素数量不超过512个 / set**-max-intset-entries** |
+| 有序集合对象 | ziplist/skiplist   | 编码转换 •	有序集合保存的所有元素成员的长度都都小于64字节 / zset**-max-ziplist-value** 	•	有序集合对象保存的元素数量不超过128个 / zset**-max-intset-entries** |
+
+**对象ptr指针**
+
+指向对象底层实现数据结构，由对象的encoding属性决定。
+
+**引用计数**
+
+**内存回收机制**（原因：C语言不具备自动回收功能）
+
+- 在创建新对象时，引用计数初始化为1 
+- 被新程序使用时，+1 
+- 不再被一个程序使用时，-1 
+- 当引用计数值为0，对象所占用的内存会被释放 
+
+**对象共享**
+
+初始化服务器时创建一万个字符串对象，0-9999所有整数值
+
+**空转时长**
+
+对象最后一次被命令程序访问的时间
+
+- OBJECT IDLETIME打印给定键空转时长 
+- 如果服务器打开maxmemory选项，并且回收算法为voliatile-lru或者allkeys-lru，那么占用内存超过阈值时，空转时长较高的键会优先被服务器释放，从而回收内存 
+
+**内存回收策略**
+
+1. **过期删除策略** 
+
+|      | 实现                                                         | 优点       | 缺点                                  |
+| ---- | ------------------------------------------------------------ | ---------- | ------------------------------------- |
+| 定时 | 在设置键过期时间同时创建定时器，键的过期时间来临立即删除     | 对内存友好 | 占用CPU时间，影响响应时间和吞吐量     |
+| 惰性 | 放任过期键不管，访问时判断                                   | CPU友好    | 有内存泄漏风险                        |
+| 定期 | 每隔一段时间，程序对数据库进行检查删除过期键，删除多少，删哪个数据库由算法决定 | 前两者折衷 | 难确定操作执行时长和频率 依赖时间事件 |
+
+​	**2.	内存淘汰策略** 
+
+在redis3.0之前，默认是volatile-lru；在redis3.0之后（包括3.0），默认淘汰策略则是noeviction。
+
+![asynccode_9.png](blob:file:///d4304ee6-80e1-41a1-ab3c-571ad33fc4f5)
+
+优先使用PEXPIREAT性能更好
+
+![asynccode_10.png](blob:file:///a3ed961b-16d6-442c-9d15-0dfc16edb661)
+
+![asynccode_11.png](blob:file:///befa2c52-bde8-4a93-ab72-2a5d8acb74a8)
+
+**键值结构**
+
+键和值本身之间用什么结构组织？
+
+![asynccode_12.png](blob:file:///fb127339-7f99-406f-bde9-a2e041c35214)
+
+- O(1) 的时间复杂度 
+- 哈希表的冲突问题和 rehash 可能带来的操作阻塞 
+
+**以字符串对象为例**
+
+无法复制加载中的内容
+
+临界值
+
+3.0 32字节
+
+![asynccode_13.png](blob:file:///29039dcf-d322-4815-9289-7eee4fa4fa7d)
+
+embstr好处：
+
+- 内存连续 
+- 内存分配次数从raw的两次降为一次 
+- 内存释放函数仅调用一次 
+
+## 思考：KV数据库抽象
+
+![image-20210428235624560](/Users/pengnanfang/Library/Application%20Support/typora-user-images/image-20210428235624560.png)
+
+## 资源
+
+https://time.geekbang.org/column/article/271839
+
+https://thinkwon.blog.csdn.net/article/details/103522351
+
+[官网](https://redis.io/)
+
+[Redis设计与实现](http://redisbook.com/index.html#)
+
+[Redis核心与技术实战](https://time.geekbang.org/column/article/279649)
+
+[容量预估](http://www.redis.cn/redis_memory/)
+
+[深入了解Redis底层数据结构](https://juejin.cn/post/6844903936520880135#heading-10)
+
+[万字长文，38 图爆肝 Redis 基础！](https://juejin.cn/post/6953501653106589727#heading-11)
+
+[海量数据和高并发下的 Redis 业务优化实践](https://juejin.cn/post/6844903873216249863)
+
+[Redis 最佳实践指南：7个维度+43条使用规范](https://jishuin.proginn.com/p/763bfbd3c50a)
+
+[redis-3.0-annotated](https://github.com/huangz1990/redis-3.0-annotated)
+
+[[美团针对Redis Rehash机制的探索和实践](https://tech.meituan.com/2018/07/27/redis-rehash-practice-optimization.html)]
