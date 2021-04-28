@@ -2,7 +2,7 @@
 layout:     post
 title:      "Redis底层设计与实现"
 subtitle:   "Redis"
-date:       2020-12-19
+date:       2021-04-29
 author:     "Lydia"
 header-img: "img/post-bg-redis.jpeg"
 catalog: true
@@ -10,8 +10,6 @@ tags:
     - Redis
     - 原理
 ---
-
-Redis分享
 
 ## 概览
 
@@ -534,4 +532,4 @@ https://thinkwon.blog.csdn.net/article/details/103522351
 
 [redis-3.0-annotated](https://github.com/huangz1990/redis-3.0-annotated)
 
-[[美团针对Redis Rehash机制的探索和实践](https://tech.meituan.com/2018/07/27/redis-rehash-practice-optimization.html)]
+[美团针对Redis Rehash机制的探索和实践](https://tech.meituan.com/2018/07/27/redis-rehash-practice-optimization.html)
